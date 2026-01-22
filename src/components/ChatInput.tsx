@@ -1,6 +1,5 @@
 import { FC, useState, KeyboardEvent } from "react";
-import { Button } from "./ui/button";
-import { Send } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -24,6 +23,8 @@ const ChatInput: FC<ChatInputProps> = ({ onSend, disabled = false }) => {
     }
   };
 
+  const isActive = message.trim().length > 0 && !disabled;
+
   return (
     <div className="relative">
       <div className="glass-card rounded-2xl p-2 flex items-end gap-2">
@@ -37,18 +38,19 @@ const ChatInput: FC<ChatInputProps> = ({ onSend, disabled = false }) => {
           rows={1}
           style={{ direction: "rtl" }}
         />
-        <Button
-          variant="send"
+        <button
           onClick={handleSend}
-          disabled={!message.trim() || disabled}
-          className="shrink-0 mb-1"
+          disabled={!isActive}
+          className={`shrink-0 mb-1 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
+            isActive 
+              ? 'bg-gradient-to-br from-primary to-primary-hover text-white shadow-md hover:opacity-90 active:scale-95' 
+              : 'bg-muted text-muted-foreground cursor-not-allowed'
+          }`}
+          aria-label="إرسال"
         >
-          <Send className="w-4 h-4 rotate-180" />
-        </Button>
+          <ArrowUp className="w-5 h-5" />
+        </button>
       </div>
-      <p className="text-center text-muted-foreground text-xs mt-3">
-        بصيرة تلتزم بمنهج أهل السنة والجماعة وتعتمد على المصادر المعتمدة فقط
-      </p>
     </div>
   );
 };
