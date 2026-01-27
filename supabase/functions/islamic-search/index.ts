@@ -30,14 +30,21 @@ serve(async (req) => {
 
     console.log("Searching for:", question);
 
-    // Query the Mofeed Content API
+    // Query the Mofeed Content API with full parameters
     const mofeedParams = new URLSearchParams({
       "language": "1", // Arabic
+      "author[0]": "240", // الشيخ المحدد
+      "age_group": "1",
+      "expert_level": "1",
+      "category[0]": "138", // الفئة الشرعية
+      "tag[0]": "1",
+      "ideology[0]": "1", // أهل السنة والجماعة
+      "entity[0]": "73", // المصدر الموثوق
+      "content_type[0]": "1",
       "search": question,
     });
 
     const mofeedUrl = `https://content.mofeed.org/Api/content?${mofeedParams.toString()}`;
-
     const mofeedResponse = await fetch(mofeedUrl, {
       method: "GET",
       headers: {
