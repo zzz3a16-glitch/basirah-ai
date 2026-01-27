@@ -121,46 +121,73 @@
   }
 
   .dark {
-    --background: 0 0% 9%;
-    --foreground: 0 0% 98%;
+    /* الخلفية الأساسية - أسود ليلي #1E1E1E */
+    --background: 0 0% 12%;
+    --background-secondary: 0 0% 9%;
+    
+    /* النص الأساسي - رمادي فاتح #D8DDE3 */
+    --foreground: 210 14% 87%;
+    
+    /* البطاقات */
     --card: 0 0% 14%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 25%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 158 64% 51%;
-    --primary-foreground: 165 91% 9%;
-    --secondary: 0 0% 45%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 45%;
-    --muted-foreground: 0 0% 98%;
-    --accent: 178 84% 10%;
-    --accent-foreground: 172 66% 50%;
+    --card-foreground: 210 14% 87%;
+    
+    /* النوافذ المنبثقة */
+    --popover: 0 0% 16%;
+    --popover-foreground: 210 14% 87%;
+    
+    /* الأزرار والتفاعل - أخضر إسلامي #0F6B53 */
+    --primary: 163 74% 24%;
+    --primary-hover: 163 74% 14%;
+    --primary-foreground: 220 20% 97%;
+    
+    /* العناصر الثانوية */
+    --secondary: 0 0% 16%;
+    --secondary-foreground: 210 14% 87%;
+    
+    /* نصوص مساعدة #9CA3AF */
+    --muted: 0 0% 16%;
+    --muted-foreground: 218 11% 65%;
+    
+    /* التمييز */
+    --accent: 163 74% 14%;
+    --accent-foreground: 163 74% 50%;
+    
+    /* التدمير */
     --destructive: 0 84% 60%;
-    --destructive-foreground: 0 85% 97%;
-    --border: 0 0% 32%;
-    --input: 0 0% 32%;
-    --ring: 158 64% 51%;
-    --chart-1: 156 71% 66%;
-    --chart-2: 141 76% 73%;
-    --chart-3: 170 76% 64%;
-    --chart-4: 81 84% 67%;
-    --chart-5: 0 0% 45%;
-    --sidebar: 0 0% 14%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 158 64% 51%;
-    --sidebar-primary-foreground: 165 91% 9%;
-    --sidebar-accent: 172 66% 50%;
-    --sidebar-accent-foreground: 178 84% 10%;
-    --sidebar-border: 0 0% 32%;
-    --sidebar-ring: 158 64% 51%;
-    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
-    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+    --destructive-foreground: 220 20% 97%;
+    
+    /* حقول الإدخال #181818 والحدود #2A2A2A */
+    --border: 0 0% 16%;
+    --input: 0 0% 9%;
+    --ring: 163 74% 24%;
+    
+    /* الرسوم البيانية */
+    --chart-1: 163 74% 40%;
+    --chart-2: 163 60% 50%;
+    --chart-3: 163 50% 35%;
+    --chart-4: 163 40% 45%;
+    --chart-5: 218 11% 65%;
+    
+    /* الشريط الجانبي */
+    --sidebar: 0 0% 12%;
+    --sidebar-foreground: 210 14% 87%;
+    --sidebar-primary: 163 74% 24%;
+    --sidebar-primary-foreground: 220 20% 97%;
+    --sidebar-accent: 163 74% 14%;
+    --sidebar-accent-foreground: 163 74% 50%;
+    --sidebar-border: 0 0% 16%;
+    --sidebar-ring: 163 74% 24%;
+    
+    /* الظلال */
+    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.15);
+    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.15);
+    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.2), 0 1px 2px -1px hsl(0 0% 0% / 0.2);
+    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.2), 0 1px 2px -1px hsl(0 0% 0% / 0.2);
+    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.2), 0 2px 4px -1px hsl(0 0% 0% / 0.2);
+    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.2), 0 4px 6px -1px hsl(0 0% 0% / 0.2);
+    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.2), 0 8px 10px -1px hsl(0 0% 0% / 0.2);
+    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.35);
   }
 }
 
