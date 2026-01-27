@@ -30,21 +30,9 @@ serve(async (req) => {
 
     console.log("Searching for:", question);
 
-    // Query the Mofeed Content API with full parameters
-    const mofeedParams = new URLSearchParams({
-      "language": "1", // Arabic
-      "author[0]": "240", // الشيخ المحدد
-      "age_group": "1",
-      "expert_level": "1",
-      "category[0]": "138", // الفئة الشرعية
-      "tag[0]": "1",
-      "ideology[0]": "1", // أهل السنة والجماعة
-      "entity[0]": "73", // المصدر الموثوق
-      "content_type[0]": "1",
-      "search": question,
-    });
+    // Query the Mofeed Content API
+    const mofeedUrl = `https://content.mofeed.org/Api/content?language=1&search=${encodeURIComponent(question)}`;
 
-    const mofeedUrl = `https://content.mofeed.org/Api/content?${mofeedParams.toString()}`;
     const mofeedResponse = await fetch(mofeedUrl, {
       method: "GET",
       headers: {
@@ -72,43 +60,69 @@ serve(async (req) => {
     let result: SearchResult;
 
     if (mofeedData && mofeedData.data && Array.isArray(mofeedData.data) && mofeedData.data.length > 0) {
-      // Log the first result in detail
-      const firstItem = mofeedData.data[0];
-      console.log("First result name:", firstItem.name);
-      console.log("First result description:", firstItem.description);
-      console.log("First result notes:", firstItem.notes);
-      console.log("First result article:", JSON.stringify(firstItem.article || null));
-      
-      // Find the best result - look for one with the most content
-      let bestResult = firstItem;
-      let bestContentLength = 0;
+      // Clean HTML from content
+      const cleanText = (text: string | null | undefined): string => {
+        if (!text) return "";
+        return String(text)
+          .replace(/<[^>]*>/g, '')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/\s+/g, ' ')
+          .trim();
+      };
+
+      // Find the best result - prioritize ones with textual content
+      let bestResult = null;
+      let bestScore = 0;
       
       for (const item of mofeedData.data) {
-        // Check article content too
-        const articleContent = item.article?.content || item.article?.body || "";
-        const contentLength = (item.description?.length || 0) + (item.notes?.length || 0) + (articleContent.length || 0);
-        if (contentLength > bestContentLength) {
-          bestContentLength = contentLength;
+        let score = 0;
+        
+        // Check for textual content
+        const desc = cleanText(item.description);
+        const notes = cleanText(item.notes);
+        const articleContent = cleanText(item.article?.content || item.article?.body);
+        
+        score += desc.length;
+        score += notes.length;
+        score += articleContent.length * 2; // Prioritize article content
+        
+        // Also consider author bio if no other content
+        const authorBio = item.author?.[0]?.bio ? cleanText(item.author[0].bio) : "";
+        if (score === 0 && authorBio.length > 0) {
+          score += 1; // Small score for having author info
+        }
+        
+        if (score > bestScore || !bestResult) {
+          bestScore = score;
           bestResult = item;
         }
       }
       
-      const topResult = bestResult;
+      const topResult = bestResult || mofeedData.data[0];
       
-      // Extract content based on the actual API structure
-      const name = topResult.name || "";
-      const description = topResult.description || "";
-      const notes = topResult.notes || "";
-      const articleContent = topResult.article?.content || topResult.article?.body || "";
+      // Extract content
+      const name = cleanText(topResult.name);
+      const description = cleanText(topResult.description);
+      const notes = cleanText(topResult.notes);
+      const articleContent = cleanText(topResult.article?.content || topResult.article?.body);
       
       // Get author info
       let authorName = "";
-      if (topResult.author) {
-        if (typeof topResult.author === "string") {
-          authorName = topResult.author;
-        } else if (topResult.author.name) {
-          authorName = topResult.author.name;
-        }
+      let authorBio = "";
+      if (topResult.author && Array.isArray(topResult.author) && topResult.author.length > 0) {
+        authorName = topResult.author[0].name || "";
+        authorBio = cleanText(topResult.author[0].bio);
+      }
+      
+      // Get category info
+      let categoryName = "";
+      if (topResult.categories && Array.isArray(topResult.categories) && topResult.categories.length > 0) {
+        categoryName = topResult.categories[0].name || "";
       }
       
       // Get entity/source info
@@ -121,58 +135,56 @@ serve(async (req) => {
         }
       }
 
-      // Clean HTML from content if present
-      const cleanText = (text: string) => {
-        if (!text) return "";
-        return text
-          .replace(/<[^>]*>/g, '')
-          .replace(/&nbsp;/g, ' ')
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/\s+/g, ' ')
-          .trim();
-      };
-
-      // Build the answer from best available source
-      const cleanName = cleanText(name);
-      const cleanDescription = cleanText(description);
-      const cleanNotes = cleanText(notes);
-      const cleanArticle = cleanText(articleContent);
-      
-      // Construct answer - use article content if available (longest), then description, then name
+      // Build the answer from available content
       let answerText = "";
-      if (cleanArticle && cleanArticle.length > 50) {
-        answerText = cleanArticle;
-      } else if (cleanDescription && cleanDescription.length > 50) {
-        answerText = cleanDescription;
-      } else if (cleanNotes && cleanNotes.length > 50) {
-        answerText = cleanNotes;
+      
+      // Priority: article > description > notes > name with context
+      if (articleContent && articleContent.length > 30) {
+        answerText = articleContent;
+      } else if (description && description.length > 30) {
+        answerText = description;
+      } else if (notes && notes.length > 30) {
+        answerText = notes;
       } else {
-        // Combine what we have
-        const combined = [cleanDescription, cleanNotes].filter(t => t && t.length > 0).join(". ");
-        if (combined.length > 10) {
-          answerText = combined;
-        } else if (cleanName) {
-          answerText = cleanName;
-        } else {
-          answerText = "لم يتم العثور على محتوى مفصل.";
+        // Use name with author context
+        if (name) {
+          answerText = `${name}`;
+          if (categoryName) {
+            answerText += ` - ${categoryName}`;
+          }
+          if (authorName) {
+            answerText += `\n\nمن محتوى الشيخ ${authorName}`;
+          }
+          
+          // Add a note about the content type
+          const hasVideo = topResult.video && topResult.video !== "[]";
+          const hasAudio = topResult.audio && topResult.audio !== "[]";
+          
+          if (hasVideo || hasAudio) {
+            answerText += `\n\nللمزيد من التفاصيل، يُرجى مشاهدة ${hasVideo ? "الفيديو" : "الصوتية"} المتاحة على منصة مفيد.`;
+          }
         }
       }
-
-      // If answer is still very short, add the title as context
-      if (answerText.length < 50 && cleanName && !answerText.includes(cleanName)) {
-        answerText = `${cleanName}: ${answerText}`;
-      }
       
-      result = {
-        answer: answerText.substring(0, 2000),
-        source: `المصدر: ${sourceName}${authorName ? ` - ${authorName}` : ""}`,
-      };
+      if (!answerText || answerText.length < 5) {
+        result = {
+          answer: "لم يرد نص صريح أو فتوى معتمدة في هذه المسألة حسب المصادر المتاحة.",
+        };
+      } else {
+        result = {
+          answer: answerText.substring(0, 2000),
+          source: `المصدر: ${sourceName}${authorName ? ` - ${authorName}` : ""}`,
+        };
 
-      // Add notes as additional benefit if we didn't use it as main answer
-      if (cleanNotes && cleanNotes.length > 5 && !answerText.includes(cleanNotes)) {
-        result.note = cleanNotes.substring(0, 500);
+        // Add relevant note if available
+        if (notes && notes.length > 5 && !answerText.includes(notes)) {
+          result.note = notes.substring(0, 500);
+        }
+        
+        // Add author bio as evidence/reference if no other content
+        if (!articleContent && !description && authorBio && authorBio.length > 50) {
+          result.evidence = `عن الشيخ: ${authorBio.substring(0, 300)}`;
+        }
       }
     } else {
       // No results - return mandatory disclaimer
