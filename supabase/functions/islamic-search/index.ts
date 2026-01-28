@@ -6,10 +6,12 @@ const corsHeaders = {
 };
 
 interface SearchResult {
+  title?: string;
   answer: string;
   evidence?: string;
   source?: string;
   note?: string;
+  videoUrl?: string;
 }
 
 serve(async (req) => {
@@ -55,6 +57,16 @@ serve(async (req) => {
 
     const mofeedData = await mofeedResponse.json();
     console.log("Mofeed data count:", mofeedData?.data?.length || 0);
+    
+    // Log first result structure for debugging
+    if (mofeedData?.data?.[0]) {
+      const first = mofeedData.data[0];
+      console.log("First result keys:", Object.keys(first));
+      console.log("First result name:", first.name);
+      console.log("First result audio:", first.audio);
+      console.log("First result video:", first.video);
+      console.log("First result description:", first.description?.substring(0, 100));
+    }
 
     // Process results
     let result: SearchResult;
@@ -135,56 +147,53 @@ serve(async (req) => {
         }
       }
 
+      // Extract video URL
+      let videoUrl = "";
+      if (topResult.video && typeof topResult.video === "string" && topResult.video !== "[]") {
+        try {
+          const videoData = JSON.parse(topResult.video);
+          if (Array.isArray(videoData) && videoData.length > 0 && videoData[0].download_link) {
+            videoUrl = `https://content.mofeed.org/${videoData[0].download_link}`;
+          }
+        } catch {
+          console.log("Failed to parse video data");
+        }
+      }
+
       // Build the answer from available content
       let answerText = "";
       
-      // Priority: article > description > notes > name with context
+      // Priority: article > description > notes
       if (articleContent && articleContent.length > 30) {
         answerText = articleContent;
       } else if (description && description.length > 30) {
         answerText = description;
       } else if (notes && notes.length > 30) {
         answerText = notes;
-      } else {
-        // Use name with author context
-        if (name) {
-          answerText = `${name}`;
-          if (categoryName) {
-            answerText += ` - ${categoryName}`;
-          }
-          if (authorName) {
-            answerText += `\n\nمن محتوى الشيخ ${authorName}`;
-          }
-          
-          // Add a note about the content type
-          const hasVideo = topResult.video && topResult.video !== "[]";
-          const hasAudio = topResult.audio && topResult.audio !== "[]";
-          
-          if (hasVideo || hasAudio) {
-            answerText += `\n\nللمزيد من التفاصيل، يُرجى مشاهدة ${hasVideo ? "الفيديو" : "الصوتية"} المتاحة على منصة مفيد.`;
-          }
-        }
+      } else if (categoryName) {
+        answerText = categoryName;
       }
       
-      if (!answerText || answerText.length < 5) {
-        result = {
-          answer: "لم يرد نص صريح أو فتوى معتمدة في هذه المسألة حسب المصادر المتاحة.",
-        };
-      } else {
-        result = {
-          answer: answerText.substring(0, 2000),
-          source: `المصدر: ${sourceName}${authorName ? ` - ${authorName}` : ""}`,
-        };
+      // Build the result
+      result = {
+        title: name || "فتوى",
+        answer: answerText.length > 5 ? answerText.substring(0, 2000) : "للاستماع إلى الفتوى كاملة، يرجى تشغيل المقطع الصوتي أدناه.",
+        source: `${sourceName}${authorName ? ` - ${authorName}` : ""}`,
+      };
 
-        // Add relevant note if available
-        if (notes && notes.length > 5 && !answerText.includes(notes)) {
-          result.note = notes.substring(0, 500);
-        }
-        
-        // Add author bio as evidence/reference if no other content
-        if (!articleContent && !description && authorBio && authorBio.length > 50) {
-          result.evidence = `عن الشيخ: ${authorBio.substring(0, 300)}`;
-        }
+      // Add video URL if available
+      if (videoUrl) {
+        result.videoUrl = videoUrl;
+      }
+
+      // Add relevant note if available
+      if (notes && notes.length > 5 && answerText !== notes) {
+        result.note = notes.substring(0, 500);
+      }
+      
+      // Add author bio as evidence/reference
+      if (authorBio && authorBio.length > 50) {
+        result.evidence = `عن الشيخ: ${authorBio.substring(0, 400)}`;
       }
     } else {
       // No results - return mandatory disclaimer

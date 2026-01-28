@@ -9,10 +9,12 @@ import { toast } from "sonner";
 interface Message {
   id: string;
   content: string | {
+    title?: string;
     answer: string;
     evidence?: string;
     source?: string;
     note?: string;
+    videoUrl?: string;
   };
   isUser: boolean;
   animate?: boolean;
