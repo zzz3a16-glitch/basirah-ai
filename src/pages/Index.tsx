@@ -9,16 +9,12 @@ import { toast } from "sonner";
 interface Message {
   id: string;
   content: string | {
-    fatwaTitle?: string;
-    answer: string;
-    source?: string;
-    evidence?: string;
-    hadith?: string;
-    audioUrl?: string;
-    // Legacy support
     title?: string;
-    videoUrl?: string;
+    answer: string;
+    evidence?: string;
+    source?: string;
     note?: string;
+    videoUrl?: string;
   };
   isUser: boolean;
   animate?: boolean;
