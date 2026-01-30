@@ -1,6 +1,7 @@
 import { FC, useState } from "react";
 import TypewriterText from "./TypewriterText";
-import { BookOpen, FileText, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronUp, BookOpen, FileText, AlertCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface MessageContent {
   answer: string;
@@ -22,9 +23,8 @@ const ChatMessage: FC<ChatMessageProps> = ({
   isLoading = false,
   animate = false,
 }) => {
-  const [showEvidence, setShowEvidence] = useState(false);
-  const [showSource, setShowSource] = useState(false);
-  const [showNote, setShowNote] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [animationComplete, setAnimationComplete] = useState(!animate);
 
   if (isUser) {
     return (
@@ -59,64 +59,85 @@ const ChatMessage: FC<ChatMessageProps> = ({
     ? { answer: content } 
     : content;
 
+  const hasAdditionalInfo = messageContent.evidence || messageContent.source || messageContent.note;
+
   return (
     <div className="flex justify-end mb-8 animate-slide-up">
-      <div className="max-w-[90%] md:max-w-[80%]">
-        {/* Answer Section */}
-        <div className="answer-section mb-4">
-          <div className="flex items-center gap-2 mb-3 text-primary">
-            <Sparkles className="w-4 h-4" />
-            <span className="text-sm font-medium">الجواب</span>
-          </div>
-          <div className="text-foreground leading-loose text-lg">
-            {animate ? (
-              <TypewriterText 
-                text={messageContent.answer} 
-                speed={15}
-                onComplete={() => setShowEvidence(true)}
-              />
-            ) : (
-              <p>{messageContent.answer}</p>
-            )}
-          </div>
+      <div className="max-w-[90%] md:max-w-[80%] w-full">
+        {/* Main Answer - GPT Style */}
+        <div className="text-foreground leading-loose text-base md:text-lg whitespace-pre-wrap">
+          {animate ? (
+            <TypewriterText 
+              text={messageContent.answer} 
+              speed={12}
+              onComplete={() => setAnimationComplete(true)}
+            />
+          ) : (
+            <p>{messageContent.answer}</p>
+          )}
         </div>
 
-        {/* Evidence Section */}
-        {messageContent.evidence && (showEvidence || !animate) && (
-          <div className="evidence-card mb-4 animate-fade-in">
-            <div className="flex items-center gap-2 mb-3 text-primary">
-              <BookOpen className="w-4 h-4" />
-              <span className="text-sm font-medium">الدليل</span>
+        {/* Note inline if exists */}
+        {messageContent.note && animationComplete && (
+          <div className="mt-4 p-3 bg-primary/5 border-r-2 border-primary rounded-sm animate-fade-in">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-primary mt-1 flex-shrink-0" />
+              <p className="text-foreground/80 text-sm leading-relaxed">
+                {messageContent.note}
+              </p>
             </div>
-            <p className="text-foreground/90 leading-loose">
-              {animate && !showSource ? (
-                <TypewriterText 
-                  text={messageContent.evidence} 
-                  speed={12}
-                  onComplete={() => setShowSource(true)}
-                />
-              ) : (
-                messageContent.evidence
+          </div>
+        )}
+
+        {/* Expandable Source Section */}
+        {hasAdditionalInfo && animationComplete && (
+          <div className="mt-6 animate-fade-in">
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className={cn(
+                "flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full py-2",
+                "border-t border-border/30 pt-4"
               )}
-            </p>
-          </div>
-        )}
+            >
+              <FileText className="w-4 h-4" />
+              <span>عرض المصدر والتفاصيل</span>
+              {isExpanded ? (
+                <ChevronUp className="w-4 h-4 mr-auto" />
+              ) : (
+                <ChevronDown className="w-4 h-4 mr-auto" />
+              )}
+            </button>
 
-        {/* Source Section */}
-        {messageContent.source && (showSource || !animate) && (
-          <div className="flex items-center gap-2 mb-4 animate-fade-in">
-            <FileText className="w-4 h-4 text-primary/70" />
-            <span className="source-text">{messageContent.source}</span>
-          </div>
-        )}
+            {/* Expanded Content */}
+            <div
+              className={cn(
+                "overflow-hidden transition-all duration-300 ease-in-out",
+                isExpanded ? "max-h-96 opacity-100 mt-4" : "max-h-0 opacity-0"
+              )}
+            >
+              <div className="space-y-4 pr-2">
+                {/* Evidence */}
+                {messageContent.evidence && (
+                  <div className="bg-secondary/30 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2 text-primary">
+                      <BookOpen className="w-4 h-4" />
+                      <span className="text-sm font-medium">الدليل</span>
+                    </div>
+                    <p className="text-foreground/85 text-sm leading-relaxed">
+                      {messageContent.evidence}
+                    </p>
+                  </div>
+                )}
 
-        {/* Note Section */}
-        {messageContent.note && (showNote || showSource || !animate) && (
-          <div className="border-t border-border/50 pt-3 mt-4 animate-fade-in">
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              <span className="text-primary/70">فائدة: </span>
-              {messageContent.note}
-            </p>
+                {/* Source */}
+                {messageContent.source && (
+                  <div className="flex items-start gap-2 text-muted-foreground text-sm">
+                    <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span>{messageContent.source}</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>
