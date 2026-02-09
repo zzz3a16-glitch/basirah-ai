@@ -13,6 +13,7 @@ interface Message {
     evidence?: string;
     source?: string;
     note?: string;
+    suggestedQuestion?: string;
   };
   isUser: boolean;
   animate?: boolean;

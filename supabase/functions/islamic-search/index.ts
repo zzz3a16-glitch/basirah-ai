@@ -10,6 +10,7 @@ interface SearchResult {
   evidence?: string;
   source?: string;
   note?: string;
+  suggestedQuestion?: string;
 }
 
 // Clean HTML tags and entities from text
@@ -85,104 +86,145 @@ const searchMofeed = async (question: string): Promise<any[]> => {
   }
 };
 
-// Process QuranPedia fatwa result
-const processQuranPediaResult = (item: any, keywords: string[]): { content: string; score: number; source: string; evidence?: string } => {
-  const title = cleanText(item.title || item.ar_title);
-  const content = cleanText(item.content || item.ar_content || item.answer || item.ar_answer);
-  const mufti = cleanText(item.mufti || item.ar_mufti);
-  const sourceUrl = item.ar_source_url || item.source_url || "";
+// Process search results into context for AI
+const processSearchResults = (quranPediaResults: any[], mofeedResults: any[]): string => {
+  let context = "";
   
-  // Calculate relevance score
-  const text = `${title} ${content}`.toLowerCase();
-  let score = content.length * 2; // Prioritize longer content
-  
-  for (const keyword of keywords) {
-    if (text.includes(keyword.toLowerCase())) {
-      score += 15;
-      if (title.toLowerCase().includes(keyword.toLowerCase())) {
-        score += 25;
-      }
+  // Process QuranPedia results
+  for (const item of quranPediaResults.slice(0, 3)) {
+    const title = cleanText(item.title || item.ar_title);
+    const content = cleanText(item.content || item.ar_content || item.answer || item.ar_answer);
+    const mufti = cleanText(item.mufti || item.ar_mufti);
+    const sourceUrl = item.ar_source_url || item.source_url || "";
+    
+    let sourceName = "QuranPedia";
+    if (sourceUrl.includes("islamweb")) sourceName = "إسلام ويب";
+    else if (sourceUrl.includes("islamqa")) sourceName = "إسلام سؤال وجواب";
+    
+    if (content.length > 20) {
+      context += `\n---\nالمصدر: ${sourceName}${mufti ? ` | ${mufti}` : ""}\nالعنوان: ${title}\nالمحتوى: ${content.substring(0, 1500)}\n`;
     }
   }
   
-  // QuranPedia fatwas get bonus for being text-focused
-  score += 100;
+  // Process Mofeed results
+  for (const item of mofeedResults.slice(0, 3)) {
+    const description = cleanText(item.description);
+    const articleContent = cleanText(item.article?.content || item.article?.body);
+    const name = cleanText(item.name);
+    
+    let authorName = "";
+    if (item.author && Array.isArray(item.author) && item.author.length > 0) {
+      authorName = item.author[0].name || "";
+    }
+    
+    const content = articleContent || description;
+    
+    if (content.length > 20) {
+      context += `\n---\nالمصدر: منصة مفيد${authorName ? ` | ${authorName}` : ""}\nالعنوان: ${name}\nالمحتوى: ${content.substring(0, 1500)}\n`;
+    }
+  }
   
-  let sourceName = "QuranPedia";
-  if (sourceUrl.includes("islamweb")) sourceName = "إسلام ويب";
-  else if (sourceUrl.includes("islamqa")) sourceName = "إسلام سؤال وجواب";
-  
-  return {
-    content: content || title,
-    score,
-    source: `المصدر: ${sourceName}${mufti ? ` | ${mufti}` : ""}`,
-    evidence: title !== content ? title : undefined,
-  };
+  return context;
 };
 
-// Process Mofeed result
-const processMofeedResult = (item: any, keywords: string[]): { content: string; score: number; source: string; evidence?: string; note?: string } => {
-  const description = cleanText(item.description);
-  const notes = cleanText(item.notes);
-  const articleContent = cleanText(item.article?.content || item.article?.body);
-  const name = cleanText(item.name);
+// Generate AI response using Lovable AI Gateway
+const generateAIResponse = async (question: string, context: string): Promise<SearchResult> => {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
-  // Get best content
-  let content = "";
-  let contentScore = 0;
-  
-  if (articleContent && articleContent.length > 50) {
-    content = articleContent;
-    contentScore = articleContent.length * 3;
-  } else if (description && description.length > 50) {
-    content = description;
-    contentScore = description.length * 2;
-  } else if (notes && notes.length > 50) {
-    content = notes;
-    contentScore = notes.length;
-  } else {
-    content = name;
-    contentScore = name.length * 0.5;
+  if (!LOVABLE_API_KEY) {
+    console.error("LOVABLE_API_KEY not found");
+    throw new Error("AI configuration error");
   }
-  
-  // Calculate relevance score
-  const text = `${name} ${description} ${notes}`.toLowerCase();
-  let score = contentScore;
-  
-  for (const keyword of keywords) {
-    if (text.includes(keyword.toLowerCase())) {
-      score += 10;
-      if (name.toLowerCase().includes(keyword.toLowerCase())) {
-        score += 20;
-      }
+
+  const systemPrompt = `أنت مساعد إسلامي ذكي اسمك "بصيرة". مهمتك الإجابة على الأسئلة الشرعية والعبادية بدقة واعتدال.
+
+القواعد الأساسية:
+1. اعتمد فقط على المصادر الموثوقة المقدمة لك
+2. اذكر مصدر كل إجابة بوضوح
+3. إذا كان في المسألة خلاف فقهي: اذكر أن فيها خلاف واعرض الرأي الراجح باختصار
+4. لا تصدر فتاوى خاصة أو حساسة، ووجّه المستخدم لسؤال عالم مختص عند الحاجة
+5. استخدم لغة عربية فصيحة مبسطة، واضحة ورحيمة
+6. لا تستخدم أحاديث ضعيفة إلا مع التنبيه على ضعفها
+7. لا تجب عن أي سؤال يخالف الشريعة
+
+تنسيق الإجابة (JSON):
+{
+  "answer": "الجواب المختصر والواضح",
+  "evidence": "الدليل من القرآن أو السنة إن وُجد",
+  "source": "اسم المصدر الذي استندت إليه",
+  "note": "تنبيه مهم إن وُجد (مثل: هذه المسألة فيها خلاف، أو: يُستحسن سؤال عالم)",
+  "suggestedQuestion": "سؤال مقترح للمتابعة مثل: هل تود معرفة المزيد عن شروط الصلاة؟"
+}
+
+إذا لم تجد إجابة في المصادر المقدمة:
+{
+  "answer": "لم يرد نص صريح أو فتوى معتمدة في هذه المسألة حسب المصادر المتاحة. يُنصح بسؤال عالم شرعي مختص.",
+  "note": "هذه المسألة تحتاج لفتوى خاصة من عالم مختص"
+}`;
+
+  const userPrompt = `السؤال: ${question}
+
+المصادر المتاحة:
+${context || "لا توجد مصادر متاحة لهذا السؤال"}
+
+أجب على السؤال بناءً على المصادر المقدمة فقط. إذا لم تجد إجابة واضحة، اعترف بذلك.
+أجب بتنسيق JSON فقط.`;
+
+  try {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 2000,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("AI Gateway error:", response.status, errorText);
+      throw new Error(`AI Gateway error: ${response.status}`);
     }
-  }
-  
-  // Get source info
-  let authorName = "";
-  let sourceName = "منصة مفيد";
-  
-  if (item.author && Array.isArray(item.author) && item.author.length > 0) {
-    authorName = item.author[0].name || "";
-  }
-  
-  if (item.entity) {
-    if (typeof item.entity === "string") {
-      sourceName = item.entity;
-    } else if (item.entity.name) {
-      sourceName = item.entity.name;
+
+    const data = await response.json();
+    const aiResponse = data.choices?.[0]?.message?.content;
+    
+    if (!aiResponse) {
+      throw new Error("Empty AI response");
     }
+
+    console.log("AI Response:", aiResponse);
+
+    // Parse JSON response
+    let parsed: SearchResult;
+    try {
+      // Extract JSON from potential markdown code blocks
+      const jsonMatch = aiResponse.match(/```json\s*([\s\S]*?)\s*```/) || 
+                        aiResponse.match(/```\s*([\s\S]*?)\s*```/) ||
+                        [null, aiResponse];
+      const jsonString = jsonMatch[1] || aiResponse;
+      parsed = JSON.parse(jsonString.trim());
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError);
+      // Fallback: use raw response as answer
+      parsed = {
+        answer: aiResponse,
+      };
+    }
+
+    return parsed;
+  } catch (error) {
+    console.error("AI generation error:", error);
+    throw error;
   }
-  
-  const categoryName = item.categories?.[0]?.name || "";
-  
-  return {
-    content,
-    score,
-    source: `المصدر: ${sourceName}${authorName ? ` | ${authorName}` : ""}${categoryName ? ` | ${categoryName}` : ""}`,
-    evidence: description && description !== content ? description.substring(0, 400) : undefined,
-    note: notes && notes !== content ? notes.substring(0, 300) : undefined,
-  };
 };
 
 serve(async (req) => {
@@ -200,13 +242,7 @@ serve(async (req) => {
       );
     }
 
-    console.log("Searching for:", question);
-    
-    // Extract keywords for relevance scoring
-    const keywords = question
-      .replace(/[؟?!.,،]/g, '')
-      .split(/\s+/)
-      .filter((word: string) => word.length > 2);
+    console.log("Processing question:", question);
 
     // Search both sources in parallel
     const [quranPediaResults, mofeedResults] = await Promise.all([
@@ -214,52 +250,39 @@ serve(async (req) => {
       searchMofeed(question),
     ]);
 
-    // Process and score all results
-    const allResults: Array<{ content: string; score: number; source: string; evidence?: string; note?: string }> = [];
+    console.log("Found results - QuranPedia:", quranPediaResults.length, "Mofeed:", mofeedResults.length);
 
-    // Process QuranPedia results
-    for (const item of quranPediaResults.slice(0, 5)) {
-      const processed = processQuranPediaResult(item, keywords);
-      if (processed.content.length > 20) {
-        allResults.push(processed);
-      }
-    }
+    // Process search results into context
+    const context = processSearchResults(quranPediaResults, mofeedResults);
 
-    // Process Mofeed results
-    for (const item of mofeedResults.slice(0, 5)) {
-      const processed = processMofeedResult(item, keywords);
-      if (processed.content.length > 20) {
-        allResults.push(processed);
-      }
-    }
-
-    console.log("Total processed results:", allResults.length);
-
+    // Generate AI response
     let result: SearchResult;
-
-    if (allResults.length > 0) {
-      // Sort by score and get best result
-      allResults.sort((a, b) => b.score - a.score);
-      const best = allResults[0];
+    
+    try {
+      result = await generateAIResponse(question, context);
+    } catch (aiError) {
+      console.error("AI error, falling back to search results:", aiError);
       
-      console.log("Best result score:", best.score, "Content length:", best.content.length);
-
-      // Limit answer length
-      let answer = best.content;
-      if (answer.length > 1500) {
-        answer = answer.substring(0, 1500) + "...";
+      // Fallback to best search result if AI fails
+      if (quranPediaResults.length > 0) {
+        const item = quranPediaResults[0];
+        result = {
+          answer: cleanText(item.content || item.ar_content || item.answer || item.ar_answer) || 
+                  "لم يرد نص صريح أو فتوى معتمدة في هذه المسألة حسب المصادر المتاحة.",
+          source: "QuranPedia",
+        };
+      } else if (mofeedResults.length > 0) {
+        const item = mofeedResults[0];
+        result = {
+          answer: cleanText(item.description || item.article?.content) ||
+                  "لم يرد نص صريح أو فتوى معتمدة في هذه المسألة حسب المصادر المتاحة.",
+          source: "منصة مفيد",
+        };
+      } else {
+        result = {
+          answer: "لم يرد نص صريح أو فتوى معتمدة في هذه المسألة حسب المصادر المتاحة.",
+        };
       }
-
-      result = {
-        answer,
-        source: best.source,
-        evidence: best.evidence,
-        note: best.note,
-      };
-    } else {
-      result = {
-        answer: "لم يرد نص صريح أو فتوى معتمدة في هذه المسألة حسب المصادر المتاحة.",
-      };
     }
 
     return new Response(

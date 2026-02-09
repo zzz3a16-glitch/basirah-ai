@@ -8,6 +8,7 @@ interface MessageContent {
   evidence?: string;
   source?: string;
   note?: string;
+  suggestedQuestion?: string;
 }
 
 interface ChatMessageProps {
@@ -86,6 +87,15 @@ const ChatMessage: FC<ChatMessageProps> = ({
                 {messageContent.note}
               </p>
             </div>
+          </div>
+        )}
+
+        {/* Suggested Question */}
+        {messageContent.suggestedQuestion && animationComplete && (
+          <div className="mt-4 animate-fade-in">
+            <p className="text-muted-foreground text-sm italic">
+              {messageContent.suggestedQuestion}
+            </p>
           </div>
         )}
 
