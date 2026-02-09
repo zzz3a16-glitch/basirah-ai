@@ -27,29 +27,138 @@ const cleanText = (text: string | null | undefined): string => {
     .trim();
 };
 
-// Extract meaningful content from API item
-const extractContent = (item: any): { content: string; score: number } => {
+// Search QuranPedia for fatwas
+const searchQuranPedia = async (question: string): Promise<any[]> => {
+  try {
+    const searchUrl = `https://api.quranpedia.net/v1/search/${encodeURIComponent(question)}/fatwas`;
+    console.log("Searching QuranPedia:", searchUrl);
+    
+    const response = await fetch(searchUrl, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      console.log("QuranPedia returned status:", response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    console.log("QuranPedia results:", data?.data?.length || 0);
+    
+    return data?.data || [];
+  } catch (error) {
+    console.error("QuranPedia error:", error);
+    return [];
+  }
+};
+
+// Search Mofeed API
+const searchMofeed = async (question: string): Promise<any[]> => {
+  try {
+    const searchUrl = `https://content.mofeed.org/Api/content?language=1&search=${encodeURIComponent(question)}`;
+    console.log("Searching Mofeed:", searchUrl);
+    
+    const response = await fetch(searchUrl, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      console.log("Mofeed returned status:", response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    console.log("Mofeed results:", data?.data?.length || 0);
+    
+    return data?.data || [];
+  } catch (error) {
+    console.error("Mofeed error:", error);
+    return [];
+  }
+};
+
+// Process QuranPedia fatwa result
+const processQuranPediaResult = (item: any, keywords: string[]): { content: string; score: number; source: string; evidence?: string } => {
+  const title = cleanText(item.title || item.ar_title);
+  const content = cleanText(item.content || item.ar_content || item.answer || item.ar_answer);
+  const mufti = cleanText(item.mufti || item.ar_mufti);
+  const sourceUrl = item.ar_source_url || item.source_url || "";
+  
+  // Calculate relevance score
+  const text = `${title} ${content}`.toLowerCase();
+  let score = content.length * 2; // Prioritize longer content
+  
+  for (const keyword of keywords) {
+    if (text.includes(keyword.toLowerCase())) {
+      score += 15;
+      if (title.toLowerCase().includes(keyword.toLowerCase())) {
+        score += 25;
+      }
+    }
+  }
+  
+  // QuranPedia fatwas get bonus for being text-focused
+  score += 100;
+  
+  let sourceName = "QuranPedia";
+  if (sourceUrl.includes("islamweb")) sourceName = "إسلام ويب";
+  else if (sourceUrl.includes("islamqa")) sourceName = "إسلام سؤال وجواب";
+  
+  return {
+    content: content || title,
+    score,
+    source: `المصدر: ${sourceName}${mufti ? ` | ${mufti}` : ""}`,
+    evidence: title !== content ? title : undefined,
+  };
+};
+
+// Process Mofeed result
+const processMofeedResult = (item: any, keywords: string[]): { content: string; score: number; source: string; evidence?: string; note?: string } => {
   const description = cleanText(item.description);
   const notes = cleanText(item.notes);
   const articleContent = cleanText(item.article?.content || item.article?.body);
   const name = cleanText(item.name);
   
-  // Priority: article content > description > notes
+  // Get best content
+  let content = "";
+  let contentScore = 0;
+  
   if (articleContent && articleContent.length > 50) {
-    return { content: articleContent, score: articleContent.length * 3 };
-  }
-  if (description && description.length > 50) {
-    return { content: description, score: description.length * 2 };
-  }
-  if (notes && notes.length > 50) {
-    return { content: notes, score: notes.length };
+    content = articleContent;
+    contentScore = articleContent.length * 3;
+  } else if (description && description.length > 50) {
+    content = description;
+    contentScore = description.length * 2;
+  } else if (notes && notes.length > 50) {
+    content = notes;
+    contentScore = notes.length;
+  } else {
+    content = name;
+    contentScore = name.length * 0.5;
   }
   
-  return { content: name, score: name.length * 0.5 };
-};
-
-// Get author and source info
-const getSourceInfo = (item: any): { authorName: string; sourceName: string } => {
+  // Calculate relevance score
+  const text = `${name} ${description} ${notes}`.toLowerCase();
+  let score = contentScore;
+  
+  for (const keyword of keywords) {
+    if (text.includes(keyword.toLowerCase())) {
+      score += 10;
+      if (name.toLowerCase().includes(keyword.toLowerCase())) {
+        score += 20;
+      }
+    }
+  }
+  
+  // Get source info
   let authorName = "";
   let sourceName = "منصة مفيد";
   
@@ -65,25 +174,15 @@ const getSourceInfo = (item: any): { authorName: string; sourceName: string } =>
     }
   }
   
-  return { authorName, sourceName };
-};
-
-// Calculate relevance score based on keyword matching
-const calculateRelevance = (item: any, keywords: string[]): number => {
-  const text = `${cleanText(item.name)} ${cleanText(item.description)} ${cleanText(item.notes)}`.toLowerCase();
-  let score = 0;
+  const categoryName = item.categories?.[0]?.name || "";
   
-  for (const keyword of keywords) {
-    if (text.includes(keyword.toLowerCase())) {
-      score += 10;
-      // Bonus for keyword in title
-      if (cleanText(item.name).toLowerCase().includes(keyword.toLowerCase())) {
-        score += 20;
-      }
-    }
-  }
-  
-  return score;
+  return {
+    content,
+    score,
+    source: `المصدر: ${sourceName}${authorName ? ` | ${authorName}` : ""}${categoryName ? ` | ${categoryName}` : ""}`,
+    evidence: description && description !== content ? description.substring(0, 400) : undefined,
+    note: notes && notes !== content ? notes.substring(0, 300) : undefined,
+  };
 };
 
 serve(async (req) => {
@@ -103,108 +202,60 @@ serve(async (req) => {
 
     console.log("Searching for:", question);
     
-    // Extract keywords from question for relevance scoring
+    // Extract keywords for relevance scoring
     const keywords = question
       .replace(/[؟?!.,،]/g, '')
       .split(/\s+/)
       .filter((word: string) => word.length > 2);
 
-    // Try specific search first
-    const searchUrl = `https://content.mofeed.org/Api/content?language=1&search=${encodeURIComponent(question)}`;
-    
-    console.log("Fetching from:", searchUrl);
-    
-    const response = await fetch(searchUrl, {
-      method: "GET",
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-      },
-    });
+    // Search both sources in parallel
+    const [quranPediaResults, mofeedResults] = await Promise.all([
+      searchQuranPedia(question),
+      searchMofeed(question),
+    ]);
 
-    if (!response.ok) {
-      console.error("API error:", response.status);
-      return new Response(
-        JSON.stringify({
-          result: {
-            answer: "لم يرد نص صريح أو فتوى معتمدة في هذه المسألة حسب المصادر المتاحة.",
-          },
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Process and score all results
+    const allResults: Array<{ content: string; score: number; source: string; evidence?: string; note?: string }> = [];
+
+    // Process QuranPedia results
+    for (const item of quranPediaResults.slice(0, 5)) {
+      const processed = processQuranPediaResult(item, keywords);
+      if (processed.content.length > 20) {
+        allResults.push(processed);
+      }
     }
 
-    const data = await response.json();
-    console.log("Results count:", data?.data?.length || 0);
+    // Process Mofeed results
+    for (const item of mofeedResults.slice(0, 5)) {
+      const processed = processMofeedResult(item, keywords);
+      if (processed.content.length > 20) {
+        allResults.push(processed);
+      }
+    }
+
+    console.log("Total processed results:", allResults.length);
 
     let result: SearchResult;
 
-    if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
-      // Score and sort results by relevance and content quality
-      const scoredResults = data.data.map((item: any) => {
-        const { content, score: contentScore } = extractContent(item);
-        const relevanceScore = calculateRelevance(item, keywords);
-        return {
-          item,
-          content,
-          totalScore: contentScore + relevanceScore,
-        };
-      });
-
-      // Sort by score descending
-      scoredResults.sort((a: any, b: any) => b.totalScore - a.totalScore);
+    if (allResults.length > 0) {
+      // Sort by score and get best result
+      allResults.sort((a, b) => b.score - a.score);
+      const best = allResults[0];
       
-      // Get best result
-      const best = scoredResults[0];
-      const bestItem = best.item;
-      const bestContent = best.content;
-      
-      console.log("Best result score:", best.totalScore, "Content length:", bestContent.length);
+      console.log("Best result score:", best.score, "Content length:", best.content.length);
 
-      if (bestContent.length < 20) {
-        // No meaningful content found
-        result = {
-          answer: "لم يرد نص صريح أو فتوى معتمدة في هذه المسألة حسب المصادر المتاحة.",
-        };
-      } else {
-        const { authorName, sourceName } = getSourceInfo(bestItem);
-        const categoryName = bestItem.categories?.[0]?.name || "";
-        
-        // Build answer
-        let answer = bestContent;
-        
-        // If content is just a title, add context
-        if (answer.length < 100 && cleanText(bestItem.name) === answer) {
-          const hasMedia = (bestItem.video && bestItem.video !== "[]") || 
-                          (bestItem.audio && bestItem.audio !== "[]");
-          
-          if (hasMedia) {
-            answer += "\n\nللمزيد من التفاصيل، يمكنكم الرجوع إلى المحتوى المرئي أو الصوتي المتاح على منصة مفيد.";
-          }
-        }
-        
-        // Limit answer length
-        if (answer.length > 1500) {
-          answer = answer.substring(0, 1500) + "...";
-        }
-
-        result = {
-          answer,
-          source: `المصدر: ${sourceName}${authorName ? ` | ${authorName}` : ""}${categoryName ? ` | ${categoryName}` : ""}`,
-        };
-
-        // Add note if available and different from answer
-        const notes = cleanText(bestItem.notes);
-        if (notes && notes.length > 20 && !answer.includes(notes)) {
-          result.note = notes.substring(0, 300);
-        }
-
-        // Add evidence if we have article content and description is different
-        const desc = cleanText(bestItem.description);
-        if (desc && desc.length > 30 && !answer.includes(desc) && answer !== desc) {
-          result.evidence = desc.substring(0, 400);
-        }
+      // Limit answer length
+      let answer = best.content;
+      if (answer.length > 1500) {
+        answer = answer.substring(0, 1500) + "...";
       }
+
+      result = {
+        answer,
+        source: best.source,
+        evidence: best.evidence,
+        note: best.note,
+      };
     } else {
       result = {
         answer: "لم يرد نص صريح أو فتوى معتمدة في هذه المسألة حسب المصادر المتاحة.",
