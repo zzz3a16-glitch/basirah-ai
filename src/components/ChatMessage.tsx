@@ -1,10 +1,11 @@
 import { FC, useState } from "react";
 import TypewriterText from "./TypewriterText";
-import { ChevronDown, ChevronUp, BookOpen, FileText, AlertCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, BookOpen, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MessageContent {
   answer: string;
+  sources?: string[];
   evidence?: string;
   source?: string;
   note?: string;
@@ -16,13 +17,35 @@ interface ChatMessageProps {
   isUser: boolean;
   isLoading?: boolean;
   animate?: boolean;
+  onSuggestedClick?: (question: string) => void;
 }
+
+// Helper to highlight Quranic verses (between ﴿ ﴾) in green
+const formatAnswer = (text: string) => {
+  // Remove all asterisks
+  let cleaned = text.replace(/\*/g, "");
+  
+  // Split by Quranic verse markers
+  const parts = cleaned.split(/(﴿[^﴾]+﴾)/g);
+  
+  return parts.map((part, i) => {
+    if (part.startsWith("﴿") && part.endsWith("﴾")) {
+      return (
+        <span key={i} className="text-primary font-semibold">
+          {part}
+        </span>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+};
 
 const ChatMessage: FC<ChatMessageProps> = ({
   content,
   isUser,
   isLoading = false,
   animate = false,
+  onSuggestedClick,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [animationComplete, setAnimationComplete] = useState(!animate);
@@ -60,21 +83,27 @@ const ChatMessage: FC<ChatMessageProps> = ({
     ? { answer: content } 
     : content;
 
-  const hasAdditionalInfo = messageContent.evidence || messageContent.source || messageContent.note;
+  // Clean asterisks from answer
+  const cleanedAnswer = messageContent.answer.replace(/\*/g, "");
+
+  // Collect all sources
+  const allSources = messageContent.sources || 
+    (messageContent.source ? [messageContent.source] : []);
+  const hasSources = allSources.length > 0;
 
   return (
     <div className="flex justify-end mb-8 animate-slide-up">
       <div className="max-w-[90%] md:max-w-[80%] w-full">
-        {/* Main Answer - GPT Style */}
+        {/* Main Answer with inline evidence */}
         <div className="text-foreground leading-loose text-base md:text-lg whitespace-pre-wrap">
           {animate ? (
             <TypewriterText 
-              text={messageContent.answer} 
+              text={cleanedAnswer} 
               speed={12}
               onComplete={() => setAnimationComplete(true)}
             />
           ) : (
-            <p>{messageContent.answer}</p>
+            <p>{formatAnswer(cleanedAnswer)}</p>
           )}
         </div>
 
@@ -93,14 +122,17 @@ const ChatMessage: FC<ChatMessageProps> = ({
         {/* Suggested Question */}
         {messageContent.suggestedQuestion && animationComplete && (
           <div className="mt-4 animate-fade-in">
-            <p className="text-muted-foreground text-sm italic">
-              {messageContent.suggestedQuestion}
-            </p>
+            <button
+              onClick={() => onSuggestedClick?.(messageContent.suggestedQuestion!)}
+              className="text-muted-foreground text-sm hover:text-primary transition-colors cursor-pointer text-right"
+            >
+              💡 {messageContent.suggestedQuestion}
+            </button>
           </div>
         )}
 
-        {/* Expandable Source Section */}
-        {hasAdditionalInfo && animationComplete && (
+        {/* Expandable Sources Section - only external sources */}
+        {hasSources && animationComplete && (
           <div className="mt-6 animate-fade-in">
             <button
               onClick={() => setIsExpanded(!isExpanded)}
@@ -109,8 +141,8 @@ const ChatMessage: FC<ChatMessageProps> = ({
                 "border-t border-border/30 pt-4"
               )}
             >
-              <FileText className="w-4 h-4" />
-              <span>عرض المصدر والتفاصيل</span>
+              <BookOpen className="w-4 h-4" />
+              <span>المصادر ({allSources.length})</span>
               {isExpanded ? (
                 <ChevronUp className="w-4 h-4 mr-auto" />
               ) : (
@@ -118,34 +150,19 @@ const ChatMessage: FC<ChatMessageProps> = ({
               )}
             </button>
 
-            {/* Expanded Content */}
             <div
               className={cn(
                 "overflow-hidden transition-all duration-300 ease-in-out",
-                isExpanded ? "max-h-96 opacity-100 mt-4" : "max-h-0 opacity-0"
+                isExpanded ? "max-h-96 opacity-100 mt-3" : "max-h-0 opacity-0"
               )}
             >
-              <div className="space-y-4 pr-2">
-                {/* Evidence */}
-                {messageContent.evidence && (
-                  <div className="bg-secondary/30 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2 text-primary">
-                      <BookOpen className="w-4 h-4" />
-                      <span className="text-sm font-medium">الدليل</span>
-                    </div>
-                    <p className="text-foreground/85 text-sm leading-relaxed">
-                      {messageContent.evidence}
-                    </p>
+              <div className="space-y-2 pr-2">
+                {allSources.map((src, idx) => (
+                  <div key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <span className="text-primary mt-0.5 flex-shrink-0">{idx + 1}.</span>
+                    <span>{src}</span>
                   </div>
-                )}
-
-                {/* Source */}
-                {messageContent.source && (
-                  <div className="flex items-start gap-2 text-muted-foreground text-sm">
-                    <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                    <span>{messageContent.source}</span>
-                  </div>
-                )}
+                ))}
               </div>
             </div>
           </div>
