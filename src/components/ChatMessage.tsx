@@ -96,7 +96,7 @@ const ChatMessage: FC<ChatMessageProps> = ({
       <div className="max-w-[90%] md:max-w-[80%] w-full">
         {/* Main Answer with inline evidence */}
         <div className="text-foreground leading-loose text-base md:text-lg whitespace-pre-wrap">
-          {animate ? (
+          {animate && !animationComplete ? (
             <TypewriterText 
               text={cleanedAnswer} 
               speed={12}
