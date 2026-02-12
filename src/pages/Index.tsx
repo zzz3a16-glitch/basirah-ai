@@ -5,6 +5,8 @@ import ChatInput from "@/components/ChatInput";
 import ChatMessage from "@/components/ChatMessage";
 import WelcomeScreen from "@/components/WelcomeScreen";
 import ChatHistory from "@/components/ChatHistory";
+import PrivacyDialog from "@/components/PrivacyDialog";
+import SettingsDialog from "@/components/SettingsDialog";
 import { toast } from "sonner";
 
 interface Message {
@@ -59,6 +61,9 @@ const Index = () => {
   const [sessions, setSessions] = useState<ChatSession[]>(loadSessions);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [userName, setUserName] = useState(() => localStorage.getItem("basirah_user_name") || "أنت");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -178,6 +183,22 @@ const Index = () => {
     });
   };
 
+  const handleUserNameChange = (name: string) => {
+    setUserName(name);
+    localStorage.setItem("basirah_user_name", name);
+  };
+
+  const handleClearAllChats = () => {
+    const pinned = sessions.filter(s => s.pinned);
+    setSessions(pinned);
+    saveSessions(pinned);
+    if (!pinned.find(s => s.id === activeSessionId)) {
+      setMessages([]);
+      setActiveSessionId(null);
+    }
+    toast.success("تم حذف المحادثات غير المثبّتة");
+  };
+
   const hasMessages = messages.length > 0;
 
   return (
@@ -197,6 +218,17 @@ const Index = () => {
         onSelectSession={handleSelectSession}
         onDeleteSession={handleDeleteSession}
         onTogglePin={handleTogglePin}
+        onOpenPrivacy={() => { setIsHistoryOpen(false); setIsPrivacyOpen(true); }}
+        onOpenSettings={() => { setIsHistoryOpen(false); setIsSettingsOpen(true); }}
+      />
+
+      <PrivacyDialog isOpen={isPrivacyOpen} onClose={() => setIsPrivacyOpen(false)} />
+      <SettingsDialog
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        userName={userName}
+        onUserNameChange={handleUserNameChange}
+        onClearAllChats={handleClearAllChats}
       />
 
       <main className="flex-1 container max-w-4xl mx-auto px-4 pt-20 pb-32">
@@ -211,6 +243,7 @@ const Index = () => {
                 isUser={message.isUser}
                 animate={message.animate}
                 onSuggestedClick={handleSend}
+                userName={userName}
               />
             ))}
             {isLoading && (

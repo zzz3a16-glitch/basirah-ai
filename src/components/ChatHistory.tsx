@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { MessageSquare, X, Trash2, Pin, PinOff } from "lucide-react";
+import { MessageSquare, X, Trash2, Pin, PinOff, Shield, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ChatSession {
@@ -17,6 +17,8 @@ interface ChatHistoryProps {
   onSelectSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
   onTogglePin: (id: string) => void;
+  onOpenPrivacy?: () => void;
+  onOpenSettings?: () => void;
 }
 
 const ChatHistory: FC<ChatHistoryProps> = ({
@@ -27,6 +29,8 @@ const ChatHistory: FC<ChatHistoryProps> = ({
   onSelectSession,
   onDeleteSession,
   onTogglePin,
+  onOpenPrivacy,
+  onOpenSettings,
 }) => {
   const pinnedSessions = sessions.filter(s => s.pinned);
   const unpinnedSessions = sessions.filter(s => !s.pinned);
@@ -78,7 +82,7 @@ const ChatHistory: FC<ChatHistoryProps> = ({
         )}
       >
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <h2 className="text-foreground font-medium text-sm">المحادثات السابقة</h2>
+          <h2 className="text-foreground font-bold text-sm">المحادثات السابقة</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-5 h-5" />
           </button>
@@ -91,7 +95,7 @@ const ChatHistory: FC<ChatHistoryProps> = ({
             <>
               {pinnedSessions.length > 0 && (
                 <div className="mb-3">
-                  <p className="text-xs text-muted-foreground px-3 py-1 flex items-center gap-1">
+                  <p className="text-xs text-muted-foreground px-3 py-1 flex items-center gap-1 font-medium">
                     <Pin className="w-3 h-3" /> مثبّتة
                   </p>
                   {pinnedSessions.map(renderSession)}
@@ -100,13 +104,31 @@ const ChatHistory: FC<ChatHistoryProps> = ({
               {unpinnedSessions.length > 0 && (
                 <div>
                   {pinnedSessions.length > 0 && (
-                    <p className="text-xs text-muted-foreground px-3 py-1">أخرى</p>
+                    <p className="text-xs text-muted-foreground px-3 py-1 font-medium">أخرى</p>
                   )}
                   {unpinnedSessions.map(renderSession)}
                 </div>
               )}
             </>
           )}
+        </div>
+
+        {/* سياسة الخصوصية والإعدادات */}
+        <div className="border-t border-border p-3 space-y-1">
+          <button
+            onClick={onOpenPrivacy}
+            className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors font-normal"
+          >
+            <Shield className="w-4 h-4" />
+            <span>سياسة الخصوصية</span>
+          </button>
+          <button
+            onClick={onOpenSettings}
+            className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors font-normal"
+          >
+            <Settings className="w-4 h-4" />
+            <span>الإعدادات</span>
+          </button>
         </div>
       </div>
     </>

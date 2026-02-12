@@ -1,6 +1,6 @@
 import { FC, useState, ReactNode } from "react";
 import TypewriterText from "./TypewriterText";
-import { ChevronDown, ChevronUp, BookOpen, AlertCircle, Scale } from "lucide-react";
+import { ChevronDown, ChevronUp, BookOpen, AlertCircle, Scale, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MessageContent {
@@ -18,6 +18,7 @@ interface ChatMessageProps {
   isLoading?: boolean;
   animate?: boolean;
   onSuggestedClick?: (question: string) => void;
+  userName?: string;
 }
 
 // Highlight Quranic verses ﴿ ﴾ in green
@@ -43,6 +44,7 @@ const ChatMessage: FC<ChatMessageProps> = ({
   isLoading = false,
   animate = false,
   onSuggestedClick,
+  userName = "أنت",
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [animationComplete, setAnimationComplete] = useState(!animate);
@@ -51,8 +53,16 @@ const ChatMessage: FC<ChatMessageProps> = ({
     return (
       <div className="flex justify-start mb-6 animate-slide-up">
         <div className="max-w-[85%] md:max-w-[75%]">
-          <div className="bg-secondary rounded-2xl rounded-tr-sm px-5 py-3">
-            <p className="text-foreground leading-relaxed">{content as string}</p>
+          {/* اسم المستخدم */}
+          <div className="flex items-center gap-1.5 mb-1.5 px-1">
+            <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+              <User className="w-3 h-3 text-primary" />
+            </div>
+            <span className="text-xs font-medium text-primary">{userName}</span>
+          </div>
+          {/* بوكس الرسالة الأخضر */}
+          <div className="bg-primary/15 border border-primary/25 rounded-2xl rounded-tr-sm px-5 py-3">
+            <p className="text-foreground leading-relaxed font-normal">{content as string}</p>
           </div>
         </div>
       </div>
@@ -86,14 +96,18 @@ const ChatMessage: FC<ChatMessageProps> = ({
     (messageContent.source ? [messageContent.source] : []);
   const hasSources = allSources.length > 0;
 
-  // Detect fiqh disagreement keywords
   const hasDisagreement = cleanedAnswer.includes("خلاف") || cleanedAnswer.includes("اختلف") || cleanedAnswer.includes("اختلاف");
 
   return (
     <div className="flex justify-end mb-8 animate-slide-up">
       <div className="max-w-[90%] md:max-w-[80%] w-full">
-        {/* Main Answer */}
-        <div className="text-foreground leading-loose text-base md:text-lg whitespace-pre-wrap">
+        {/* اسم بصيرة */}
+        <div className="flex items-center gap-1.5 mb-2 px-1">
+          <span className="text-xs font-bold text-primary tracking-wide">بصيرة</span>
+        </div>
+
+        {/* Main Answer - وزن خط عادي للإجابة */}
+        <div className="text-foreground leading-loose text-base md:text-lg whitespace-pre-wrap font-light">
           {animate && !animationComplete ? (
             <TypewriterText
               text={cleanedAnswer}
@@ -106,24 +120,24 @@ const ChatMessage: FC<ChatMessageProps> = ({
           )}
         </div>
 
-        {/* Fiqh disagreement notice */}
+        {/* Fiqh disagreement notice - وزن خط متوسط */}
         {hasDisagreement && animationComplete && (
           <div className="mt-4 p-3 bg-amber-500/10 border-r-2 border-amber-500 rounded-sm animate-fade-in">
             <div className="flex items-start gap-2">
               <Scale className="w-4 h-4 text-amber-500 mt-1 flex-shrink-0" />
-              <p className="text-foreground/80 text-sm leading-relaxed">
+              <p className="text-foreground/80 text-sm leading-relaxed font-medium">
                 هذه المسألة فيها خلاف بين أهل العلم. يُنصح بالرجوع إلى عالم شرعي موثوق للتحقق.
               </p>
             </div>
           </div>
         )}
 
-        {/* Note */}
+        {/* Note - وزن خط متوسط */}
         {messageContent.note && animationComplete && (
           <div className="mt-4 p-3 bg-primary/5 border-r-2 border-primary rounded-sm animate-fade-in">
             <div className="flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-primary mt-1 flex-shrink-0" />
-              <p className="text-foreground/80 text-sm leading-relaxed">
+              <p className="text-foreground/80 text-sm leading-relaxed font-medium">
                 {messageContent.note}
               </p>
             </div>
@@ -135,20 +149,20 @@ const ChatMessage: FC<ChatMessageProps> = ({
           <div className="mt-4 animate-fade-in">
             <button
               onClick={() => onSuggestedClick?.(messageContent.suggestedQuestion!)}
-              className="text-muted-foreground text-sm hover:text-primary transition-colors cursor-pointer text-right"
+              className="text-muted-foreground text-sm hover:text-primary transition-colors cursor-pointer text-right font-normal"
             >
               💡 {messageContent.suggestedQuestion}
             </button>
           </div>
         )}
 
-        {/* Expandable Sources */}
+        {/* Expandable Sources - وزن خفيف */}
         {hasSources && animationComplete && (
           <div className="mt-6 animate-fade-in">
             <button
               onClick={() => setIsExpanded(!isExpanded)}
               className={cn(
-                "flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full py-2",
+                "flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full py-2 font-normal",
                 "border-t border-border/30 pt-4"
               )}
             >
@@ -169,7 +183,7 @@ const ChatMessage: FC<ChatMessageProps> = ({
             >
               <div className="space-y-2 pr-2">
                 {allSources.map((src, idx) => (
-                  <div key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <div key={idx} className="flex items-start gap-2 text-sm text-muted-foreground font-light">
                     <span className="text-primary mt-0.5 flex-shrink-0">{idx + 1}.</span>
                     <span>{src}</span>
                   </div>
