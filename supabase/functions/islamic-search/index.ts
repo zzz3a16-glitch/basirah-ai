@@ -104,8 +104,8 @@ serve(async (req) => {
           { role: "system", content: systemPrompt },
           { role: "user", content: `السؤال: ${question}\n\nأجب بصيغة JSON فقط.` }
         ],
-        temperature: 0.3,
-        max_tokens: 2000,
+        temperature: 0.2,
+        max_tokens: 1500,
       }),
     });
 
