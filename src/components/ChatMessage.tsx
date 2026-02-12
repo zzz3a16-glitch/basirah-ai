@@ -1,6 +1,6 @@
-import { FC, useState } from "react";
+import { FC, useState, ReactNode } from "react";
 import TypewriterText from "./TypewriterText";
-import { ChevronDown, ChevronUp, BookOpen, AlertCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, BookOpen, AlertCircle, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MessageContent {
@@ -20,14 +20,11 @@ interface ChatMessageProps {
   onSuggestedClick?: (question: string) => void;
 }
 
-// Helper to highlight Quranic verses (between ﴿ ﴾) in green
-const formatAnswer = (text: string) => {
-  // Remove all asterisks
-  let cleaned = text.replace(/\*/g, "");
-  
-  // Split by Quranic verse markers
+// Highlight Quranic verses ﴿ ﴾ in green
+const formatAnswer = (text: string): ReactNode[] => {
+  const cleaned = text.replace(/\*/g, "");
   const parts = cleaned.split(/(﴿[^﴾]+﴾)/g);
-  
+
   return parts.map((part, i) => {
     if (part.startsWith("﴿") && part.endsWith("﴾")) {
       return (
@@ -79,35 +76,49 @@ const ChatMessage: FC<ChatMessageProps> = ({
     );
   }
 
-  const messageContent = typeof content === "string" 
-    ? { answer: content } 
+  const messageContent = typeof content === "string"
+    ? { answer: content }
     : content;
 
-  // Clean asterisks from answer
   const cleanedAnswer = messageContent.answer.replace(/\*/g, "");
 
-  // Collect all sources
-  const allSources = messageContent.sources || 
+  const allSources = messageContent.sources ||
     (messageContent.source ? [messageContent.source] : []);
   const hasSources = allSources.length > 0;
+
+  // Detect fiqh disagreement keywords
+  const hasDisagreement = cleanedAnswer.includes("خلاف") || cleanedAnswer.includes("اختلف") || cleanedAnswer.includes("اختلاف");
 
   return (
     <div className="flex justify-end mb-8 animate-slide-up">
       <div className="max-w-[90%] md:max-w-[80%] w-full">
-        {/* Main Answer with inline evidence */}
+        {/* Main Answer */}
         <div className="text-foreground leading-loose text-base md:text-lg whitespace-pre-wrap">
           {animate && !animationComplete ? (
-            <TypewriterText 
-              text={cleanedAnswer} 
-              speed={12}
+            <TypewriterText
+              text={cleanedAnswer}
+              speed={10}
               onComplete={() => setAnimationComplete(true)}
+              renderChar={(visibleText) => <>{formatAnswer(visibleText)}</>}
             />
           ) : (
             <p>{formatAnswer(cleanedAnswer)}</p>
           )}
         </div>
 
-        {/* Note inline if exists */}
+        {/* Fiqh disagreement notice */}
+        {hasDisagreement && animationComplete && (
+          <div className="mt-4 p-3 bg-amber-500/10 border-r-2 border-amber-500 rounded-sm animate-fade-in">
+            <div className="flex items-start gap-2">
+              <Scale className="w-4 h-4 text-amber-500 mt-1 flex-shrink-0" />
+              <p className="text-foreground/80 text-sm leading-relaxed">
+                هذه المسألة فيها خلاف بين أهل العلم. يُنصح بالرجوع إلى عالم شرعي موثوق للتحقق.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Note */}
         {messageContent.note && animationComplete && (
           <div className="mt-4 p-3 bg-primary/5 border-r-2 border-primary rounded-sm animate-fade-in">
             <div className="flex items-start gap-2">
@@ -131,7 +142,7 @@ const ChatMessage: FC<ChatMessageProps> = ({
           </div>
         )}
 
-        {/* Expandable Sources Section - only external sources */}
+        {/* Expandable Sources */}
         {hasSources && animationComplete && (
           <div className="mt-6 animate-fade-in">
             <button

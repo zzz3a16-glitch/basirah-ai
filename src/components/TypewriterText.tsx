@@ -1,43 +1,45 @@
-import { FC, useEffect, useState } from "react";
+import { FC, useEffect, useState, ReactNode } from "react";
 
 interface TypewriterTextProps {
   text: string;
   speed?: number;
   className?: string;
   onComplete?: () => void;
+  renderChar?: (visibleText: string) => ReactNode;
 }
 
 const TypewriterText: FC<TypewriterTextProps> = ({
   text,
-  speed = 20,
+  speed = 15,
   className = "",
   onComplete,
+  renderChar,
 }) => {
-  const [displayedText, setDisplayedText] = useState("");
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [charCount, setCharCount] = useState(0);
 
   useEffect(() => {
-    if (currentIndex < text.length) {
+    if (charCount < text.length) {
+      // Speed up: reveal 2-3 chars at a time for longer texts
+      const step = text.length > 200 ? 3 : text.length > 100 ? 2 : 1;
       const timeout = setTimeout(() => {
-        setDisplayedText((prev) => prev + text[currentIndex]);
-        setCurrentIndex((prev) => prev + 1);
+        setCharCount((prev) => Math.min(prev + step, text.length));
       }, speed);
-
       return () => clearTimeout(timeout);
     } else if (onComplete) {
       onComplete();
     }
-  }, [currentIndex, text, speed, onComplete]);
+  }, [charCount, text, speed, onComplete]);
 
   useEffect(() => {
-    setDisplayedText("");
-    setCurrentIndex(0);
+    setCharCount(0);
   }, [text]);
+
+  const visibleText = text.slice(0, charCount);
 
   return (
     <span className={className}>
-      {displayedText}
-      {currentIndex < text.length && (
+      {renderChar ? renderChar(visibleText) : visibleText}
+      {charCount < text.length && (
         <span className="animate-pulse text-primary">|</span>
       )}
     </span>

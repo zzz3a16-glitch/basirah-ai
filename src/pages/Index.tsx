@@ -26,6 +26,7 @@ interface ChatSession {
   title: string;
   timestamp: number;
   messages: Message[];
+  pinned?: boolean;
 }
 
 const STORAGE_KEY = "basirah_chat_sessions";
@@ -33,7 +34,14 @@ const STORAGE_KEY = "basirah_chat_sessions";
 const loadSessions = (): ChatSession[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const sessions: ChatSession[] = raw ? JSON.parse(raw) : [];
+    // Auto-delete unpinned sessions older than 7 days
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const filtered = sessions.filter(s => s.pinned || s.timestamp > weekAgo);
+    if (filtered.length !== sessions.length) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    }
+    return filtered;
   } catch { return []; }
 };
 
@@ -162,6 +170,14 @@ const Index = () => {
     }
   };
 
+  const handleTogglePin = (id: string) => {
+    setSessions(prev => {
+      const updated = prev.map(s => s.id === id ? { ...s, pinned: !s.pinned } : s);
+      saveSessions(updated);
+      return updated;
+    });
+  };
+
   const hasMessages = messages.length > 0;
 
   return (
@@ -176,10 +192,11 @@ const Index = () => {
       <ChatHistory
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
-        sessions={sessions.map(s => ({ id: s.id, title: s.title, timestamp: s.timestamp }))}
+        sessions={sessions.map(s => ({ id: s.id, title: s.title, timestamp: s.timestamp, pinned: s.pinned }))}
         activeSessionId={activeSessionId}
         onSelectSession={handleSelectSession}
         onDeleteSession={handleDeleteSession}
+        onTogglePin={handleTogglePin}
       />
 
       <main className="flex-1 container max-w-4xl mx-auto px-4 pt-20 pb-32">
