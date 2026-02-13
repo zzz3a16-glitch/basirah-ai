@@ -89,6 +89,9 @@
     --spiritual-gradient-start: 163 74% 24%;
     --spiritual-gradient-end: 163 50% 15%;
 
+    /* Hadith color - lighter green */
+    --hadith: 163 50% 55%;
+
     /* Evidence and source styling */
     --evidence-bg: 163 30% 12%;
     --source-text: 163 40% 50%;

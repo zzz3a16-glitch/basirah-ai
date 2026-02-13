@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import ChatHeader from "@/components/ChatHeader";
 import ChatInput from "@/components/ChatInput";
 import ChatMessage from "@/components/ChatMessage";
@@ -29,26 +30,18 @@ interface ChatSession {
   timestamp: number;
   messages: Message[];
   pinned?: boolean;
+  dbId?: string; // database UUID
 }
 
 const STORAGE_KEY = "basirah_chat_sessions";
 
-const loadSessions = (): ChatSession[] => {
+const loadLocalSessions = (): ChatSession[] => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const sessions: ChatSession[] = raw ? JSON.parse(raw) : [];
-    // Auto-delete unpinned sessions older than 7 days
     const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const filtered = sessions.filter(s => s.pinned || s.timestamp > weekAgo);
-    if (filtered.length !== sessions.length) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-    }
-    return filtered;
+    return sessions.filter(s => s.pinned || s.timestamp > weekAgo);
   } catch { return []; }
-};
-
-const saveSessions = (sessions: ChatSession[]) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
 };
 
 const defaultResponse = {
@@ -56,9 +49,10 @@ const defaultResponse = {
 };
 
 const Index = () => {
+  const { user, displayName, signOut, updateDisplayName } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [sessions, setSessions] = useState<ChatSession[]>(loadSessions);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
@@ -66,44 +60,86 @@ const Index = () => {
   const [userName, setUserName] = useState(() => localStorage.getItem("basirah_user_name") || "أنت");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Load sessions from DB or localStorage
+  useEffect(() => {
+    if (user) {
+      loadDbSessions();
+    } else {
+      setSessions(loadLocalSessions());
+    }
+  }, [user]);
+
+  // Sync displayName
+  useEffect(() => {
+    if (displayName) setUserName(displayName);
+  }, [displayName]);
+
+  const loadDbSessions = async () => {
+    const { data } = await supabase
+      .from("conversations")
+      .select("*")
+      .order("updated_at", { ascending: false });
+    if (data) {
+      setSessions(data.map(c => ({
+        id: c.id,
+        dbId: c.id,
+        title: c.title,
+        timestamp: new Date(c.updated_at).getTime(),
+        messages: (c.messages as unknown as Message[]) || [],
+        pinned: c.pinned,
+      })));
+    }
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, isLoading]);
+  useEffect(() => { scrollToBottom(); }, [messages, isLoading]);
 
-  // Save current chat to sessions when messages change
-  const saveCurrentChat = useCallback((msgs: Message[]) => {
+  const saveChat = useCallback(async (msgs: Message[], sessionId?: string | null) => {
     if (msgs.length === 0) return;
-    
     const firstUserMsg = msgs.find(m => m.isUser);
-    const title = firstUserMsg 
+    const title = firstUserMsg
       ? (firstUserMsg.content as string).slice(0, 50) + ((firstUserMsg.content as string).length > 50 ? "..." : "")
       : "محادثة جديدة";
 
-    setSessions(prev => {
-      let updated: ChatSession[];
-      if (activeSessionId) {
-        updated = prev.map(s => s.id === activeSessionId ? { ...s, messages: msgs, title } : s);
+    if (user) {
+      // Save to database
+      if (sessionId) {
+        await supabase.from("conversations").update({ messages: msgs as any, title }).eq("id", sessionId);
+        setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, messages: msgs, title } : s));
       } else {
-        const newId = Date.now().toString();
-        setActiveSessionId(newId);
-        updated = [{ id: newId, title, timestamp: Date.now(), messages: msgs }, ...prev];
+        const { data } = await supabase.from("conversations").insert({
+          user_id: user.id, title, messages: msgs as any,
+        }).select().single();
+        if (data) {
+          const newSession: ChatSession = {
+            id: data.id, dbId: data.id, title, timestamp: Date.now(), messages: msgs,
+          };
+          setActiveSessionId(data.id);
+          setSessions(prev => [newSession, ...prev]);
+        }
       }
-      saveSessions(updated);
-      return updated;
-    });
-  }, [activeSessionId]);
+    } else {
+      // Save to localStorage
+      setSessions(prev => {
+        let updated: ChatSession[];
+        if (sessionId) {
+          updated = prev.map(s => s.id === sessionId ? { ...s, messages: msgs, title } : s);
+        } else {
+          const newId = Date.now().toString();
+          setActiveSessionId(newId);
+          updated = [{ id: newId, title, timestamp: Date.now(), messages: msgs }, ...prev];
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        return updated;
+      });
+    }
+  }, [user]);
 
   const handleSend = async (text: string) => {
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: text,
-      isUser: true,
-    };
-
+    const userMessage: Message = { id: Date.now().toString(), content: text, isUser: true };
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setIsLoading(true);
@@ -112,47 +148,27 @@ const Index = () => {
       const { data, error } = await supabase.functions.invoke('islamic-search', {
         body: { question: text }
       });
-
-      if (error) {
-        console.error("Edge function error:", error);
-        throw error;
-      }
-
+      if (error) throw error;
       const response = data?.result || defaultResponse;
-
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: response,
-        isUser: false,
-        animate: true,
-      };
-
+      const aiMessage: Message = { id: (Date.now() + 1).toString(), content: response, isUser: false, animate: true };
       const finalMessages = [...newMessages, aiMessage];
       setMessages(finalMessages);
-      saveCurrentChat(finalMessages);
+      await saveChat(finalMessages, activeSessionId);
     } catch (error) {
-      console.error("Error fetching response:", error);
+      console.error("Error:", error);
       toast.error("حدث خطأ أثناء البحث. يرجى المحاولة مرة أخرى.");
-      
-      const errorMessage: Message = {
+      const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
-        content: {
-          answer: "حدث خطأ أثناء البحث. يرجى المحاولة مرة أخرى.",
-        },
-        isUser: false,
-        animate: true,
+        content: { answer: "حدث خطأ أثناء البحث. يرجى المحاولة مرة أخرى." },
+        isUser: false, animate: true,
       };
-      const finalMessages = [...newMessages, errorMessage];
-      setMessages(finalMessages);
+      setMessages([...newMessages, errorMsg]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleNewChat = () => {
-    setMessages([]);
-    setActiveSessionId(null);
-  };
+  const handleNewChat = () => { setMessages([]); setActiveSessionId(null); };
 
   const handleSelectSession = (id: string) => {
     const session = sessions.find(s => s.id === id);
@@ -163,53 +179,64 @@ const Index = () => {
     }
   };
 
-  const handleDeleteSession = (id: string) => {
+  const handleDeleteSession = async (id: string) => {
+    if (user) {
+      await supabase.from("conversations").delete().eq("id", id);
+    }
     setSessions(prev => {
       const updated = prev.filter(s => s.id !== id);
-      saveSessions(updated);
+      if (!user) localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       return updated;
     });
-    if (activeSessionId === id) {
-      setMessages([]);
-      setActiveSessionId(null);
-    }
+    if (activeSessionId === id) { setMessages([]); setActiveSessionId(null); }
   };
 
-  const handleTogglePin = (id: string) => {
+  const handleTogglePin = async (id: string) => {
+    const session = sessions.find(s => s.id === id);
+    if (!session) return;
+    const newPinned = !session.pinned;
+    if (user) {
+      await supabase.from("conversations").update({ pinned: newPinned }).eq("id", id);
+    }
     setSessions(prev => {
-      const updated = prev.map(s => s.id === id ? { ...s, pinned: !s.pinned } : s);
-      saveSessions(updated);
+      const updated = prev.map(s => s.id === id ? { ...s, pinned: newPinned } : s);
+      if (!user) localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       return updated;
     });
   };
 
   const handleUserNameChange = (name: string) => {
     setUserName(name);
-    localStorage.setItem("basirah_user_name", name);
+    if (user) updateDisplayName(name);
+    else localStorage.setItem("basirah_user_name", name);
   };
 
-  const handleClearAllChats = () => {
+  const handleClearAllChats = async () => {
+    if (user) {
+      await supabase.from("conversations").delete().eq("pinned", false).eq("user_id", user.id);
+    }
     const pinned = sessions.filter(s => s.pinned);
     setSessions(pinned);
-    saveSessions(pinned);
-    if (!pinned.find(s => s.id === activeSessionId)) {
-      setMessages([]);
-      setActiveSessionId(null);
-    }
+    if (!user) localStorage.setItem(STORAGE_KEY, JSON.stringify(pinned));
+    if (!pinned.find(s => s.id === activeSessionId)) { setMessages([]); setActiveSessionId(null); }
     toast.success("تم حذف المحادثات غير المثبّتة");
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    setMessages([]);
+    setActiveSessionId(null);
+    setSessions([]);
+    setIsHistoryOpen(false);
+    toast.success("تم تسجيل الخروج");
   };
 
   const hasMessages = messages.length > 0;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <ChatHeader 
-        onNewChat={handleNewChat} 
-        hasMessages={hasMessages}
-        onOpenHistory={() => setIsHistoryOpen(true)}
-        sessionCount={sessions.length}
-      />
-      
+      <ChatHeader onNewChat={handleNewChat} hasMessages={hasMessages} onOpenHistory={() => setIsHistoryOpen(true)} sessionCount={sessions.length} />
+
       <ChatHistory
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
@@ -220,6 +247,8 @@ const Index = () => {
         onTogglePin={handleTogglePin}
         onOpenPrivacy={() => { setIsHistoryOpen(false); setIsPrivacyOpen(true); }}
         onOpenSettings={() => { setIsHistoryOpen(false); setIsSettingsOpen(true); }}
+        isLoggedIn={!!user}
+        onSignOut={handleSignOut}
       />
 
       <PrivacyDialog isOpen={isPrivacyOpen} onClose={() => setIsPrivacyOpen(false)} />
@@ -237,22 +266,9 @@ const Index = () => {
         ) : (
           <div className="py-6">
             {messages.map((message) => (
-              <ChatMessage
-                key={message.id}
-                content={message.content}
-                isUser={message.isUser}
-                animate={message.animate}
-                onSuggestedClick={handleSend}
-                userName={userName}
-              />
+              <ChatMessage key={message.id} content={message.content} isUser={message.isUser} animate={message.animate} onSuggestedClick={handleSend} userName={userName} />
             ))}
-            {isLoading && (
-              <ChatMessage
-                content=""
-                isUser={false}
-                isLoading={true}
-              />
-            )}
+            {isLoading && <ChatMessage content="" isUser={false} isLoading={true} />}
             <div ref={messagesEndRef} />
           </div>
         )}

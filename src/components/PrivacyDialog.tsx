@@ -23,41 +23,75 @@ const PrivacyDialog: FC<PrivacyDialogProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 text-foreground/85 text-sm leading-relaxed font-light" style={{ direction: "rtl" }}>
+        <div className="flex-1 overflow-y-auto p-5 space-y-5 text-foreground/85 text-sm leading-relaxed font-light" style={{ direction: "rtl" }}>
           <section>
             <h3 className="font-bold text-foreground mb-2">مقدمة</h3>
             <p>
-              نلتزم في «بصيرة» بحماية خصوصيتك. يوضح هذا البيان كيفية تعاملنا مع بياناتك عند استخدامك للتطبيق.
+              مرحبًا بك في تطبيق «بصيرة» – مساعدك الذكي في العلوم الشرعية. نحرص على حماية خصوصيتك واحترام بياناتك الشخصية وفقًا لأفضل المعايير والممارسات المعمول بها.
             </p>
           </section>
 
           <section>
             <h3 className="font-bold text-foreground mb-2">البيانات التي نجمعها</h3>
+            <ul className="space-y-1.5 list-disc list-inside">
+              <li>معلومات الحساب: البريد الإلكتروني والاسم عند التسجيل.</li>
+              <li>المحادثات: تُحفظ أسئلتك وإجاباتها لتتمكن من الرجوع إليها لاحقًا.</li>
+              <li>لا نجمع بيانات الموقع الجغرافي أو بيانات الاتصال أو الملفات الشخصية.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h3 className="font-bold text-foreground mb-2">كيف نستخدم بياناتك</h3>
+            <ul className="space-y-1.5 list-disc list-inside">
+              <li>لتقديم الإجابات الشرعية بناءً على أسئلتك.</li>
+              <li>لحفظ سجل المحادثات وإتاحة استرجاعها عند تسجيل الدخول.</li>
+              <li>لتحسين جودة الخدمة وتطوير التطبيق.</li>
+              <li>لا نبيع أو نشارك بياناتك مع أي أطراف خارجية لأغراض تجارية.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h3 className="font-bold text-foreground mb-2">حماية البيانات</h3>
+            <ul className="space-y-1.5 list-disc list-inside">
+              <li>نستخدم اتصالات مشفرة (HTTPS/TLS) لحماية البيانات أثناء النقل.</li>
+              <li>يتم تخزين كلمات المرور بشكل مشفر ولا يمكن لأي شخص الاطلاع عليها.</li>
+              <li>نطبق سياسات أمان على مستوى قاعدة البيانات (RLS) لضمان وصول كل مستخدم لبياناته فقط.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h3 className="font-bold text-foreground mb-2">حقوقك</h3>
+            <ul className="space-y-1.5 list-disc list-inside">
+              <li>يحق لك حذف حسابك وجميع بياناتك في أي وقت.</li>
+              <li>يمكنك حذف أي محادثة بشكل فوري ودائم.</li>
+              <li>يحق لك طلب نسخة من بياناتك المخزنة.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h3 className="font-bold text-foreground mb-2">الاستخدام بدون تسجيل</h3>
             <p>
-              لا نجمع أي بيانات شخصية تعريفية. الأسئلة التي تطرحها تُعالج للحصول على الإجابة فقط ولا تُخزّن على خوادمنا بشكل دائم.
+              يمكنك استخدام التطبيق بدون إنشاء حساب. في هذه الحالة، تُحفظ المحادثات محليًا على جهازك فقط (عبر المتصفح) ولا نملك صلاحية الوصول إليها. ستفقد هذه البيانات عند مسح بيانات المتصفح.
             </p>
           </section>
 
           <section>
-            <h3 className="font-bold text-foreground mb-2">التخزين المحلي</h3>
+            <h3 className="font-bold text-foreground mb-2">إخلاء المسؤولية الشرعية</h3>
             <p>
-              يتم حفظ سجل المحادثات محليًا على جهازك فقط (عبر المتصفح)، ويمكنك حذفه في أي وقت. لا نملك صلاحية الوصول إلى هذه البيانات.
+              «بصيرة» أداة مساعدة تعتمد على الذكاء الاصطناعي. لا يُعد المحتوى المقدم فتوى شرعية رسمية. يُنصح دائمًا بالرجوع إلى عالم شرعي مختص في المسائل المعقدة أو الشخصية.
             </p>
           </section>
 
           <section>
-            <h3 className="font-bold text-foreground mb-2">الأمان</h3>
+            <h3 className="font-bold text-foreground mb-2">التواصل</h3>
             <p>
-              نستخدم اتصالات مشفرة (HTTPS) لحماية البيانات أثناء النقل. نحرص على اتباع أفضل الممارسات الأمنية.
+              لأي استفسار أو ملاحظة حول سياسة الخصوصية، يُرجى التواصل معنا عبر التطبيق.
             </p>
           </section>
 
-          <section>
-            <h3 className="font-bold text-foreground mb-2">تواصل معنا</h3>
-            <p>
-              إذا كان لديك أي استفسار حول سياسة الخصوصية، يُرجى التواصل معنا عبر التطبيق.
-            </p>
-          </section>
+          <p className="text-xs text-muted-foreground text-center pt-3 border-t border-border/30">
+            آخر تحديث: فبراير 2026
+          </p>
         </div>
       </div>
     </>
