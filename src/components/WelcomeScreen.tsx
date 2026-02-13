@@ -49,8 +49,8 @@ const WelcomeScreen: FC<WelcomeScreenProps> = ({ onExampleClick }) => {
       <div className="text-center mb-8">
         <img
           alt="بصيرة"
-          className="h-16 md:h-20 mx-auto mb-4 opacity-90"
-          src="/lovable-uploads/b463f692-fc0f-4421-96a6-24a33011c117.png" />
+          className="h-16 md:h-20 mx-auto mb-4 opacity-90" src="/lovable-uploads/8913e99b-4319-485e-8839-ff51914aa3d9.png" />
+
 
         <p className="text-muted-foreground text-sm md:text-base max-w-md mx-auto leading-relaxed">
           ذكاء اصطناعي إسلامي موثوق يلتزم بمنهج أهل السنة والجماعة
