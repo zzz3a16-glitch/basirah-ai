@@ -52,9 +52,9 @@ const WelcomeScreen: FC<WelcomeScreenProps> = ({ onExampleClick }) => {
           className="h-16 md:h-20 mx-auto mb-4 opacity-90" src="/lovable-uploads/8913e99b-4319-485e-8839-ff51914aa3d9.png" />
 
 
-        <p className="text-muted-foreground text-sm md:text-base max-w-md mx-auto leading-relaxed">
-          ذكاء اصطناعي إسلامي موثوق يلتزم بمنهج أهل السنة والجماعة
-        </p>
+        
+
+
       </div>
 
       {/* Sections */}
