@@ -49,12 +49,12 @@ const WelcomeScreen: FC<WelcomeScreenProps> = ({ onExampleClick }) => {
       <div className="text-center mb-8">
         <img
           alt="بصيرة"
-          className="h-16 md:h-20 mx-auto mb-4 opacity-90 border-destructive-foreground border-dotted border-0" src="/lovable-uploads/b0814bdf-33d4-453d-8aa6-244ea92938c6.png" />
+          className="h-16 md:h-20 mx-auto mb-4 opacity-90"
+          src="/lovable-uploads/b463f692-fc0f-4421-96a6-24a33011c117.png" />
 
-
-        
-
-
+        <p className="text-muted-foreground text-sm md:text-base max-w-md mx-auto leading-relaxed">
+          ذكاء اصطناعي إسلامي موثوق يلتزم بمنهج أهل السنة والجماعة
+        </p>
       </div>
 
       {/* Sections */}
@@ -72,20 +72,20 @@ const WelcomeScreen: FC<WelcomeScreenProps> = ({ onExampleClick }) => {
       </div>
 
       {/* Example questions */}
-      <div className="w-full max-w-lg">
-        <p className="text-muted-foreground text-xs mb-3 text-center">أو اسأل سؤالاً شرعيًا:</p>
-        <div className="grid grid-cols-2 gap-2">
-          {exampleQuestions.map((q) =>
-          <button
-            key={q}
-            onClick={() => onExampleClick(q)}
-            className="text-right text-sm px-3 py-2.5 rounded-xl bg-card border border-border/50 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors">
+      
 
-              {q}
-            </button>
-          )}
-        </div>
-      </div>
+
+
+
+
+
+
+
+
+
+
+
+
     </div>);
 
 };
