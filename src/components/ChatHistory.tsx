@@ -1,6 +1,7 @@
 import { FC } from "react";
-import { MessageSquare, X, Trash2, Pin, PinOff, Shield, Settings } from "lucide-react";
+import { MessageSquare, X, Trash2, Pin, PinOff, Shield, Settings, BookOpen, Heart, Sparkles, LogIn, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 interface ChatSession {
   id: string;
@@ -19,6 +20,8 @@ interface ChatHistoryProps {
   onTogglePin: (id: string) => void;
   onOpenPrivacy?: () => void;
   onOpenSettings?: () => void;
+  isLoggedIn?: boolean;
+  onSignOut?: () => void;
 }
 
 const ChatHistory: FC<ChatHistoryProps> = ({
@@ -31,7 +34,10 @@ const ChatHistory: FC<ChatHistoryProps> = ({
   onTogglePin,
   onOpenPrivacy,
   onOpenSettings,
+  isLoggedIn,
+  onSignOut,
 }) => {
+  const navigate = useNavigate();
   const pinnedSessions = sessions.filter(s => s.pinned);
   const unpinnedSessions = sessions.filter(s => !s.pinned);
 
@@ -52,7 +58,6 @@ const ChatHistory: FC<ChatHistoryProps> = ({
         <button
           onClick={(e) => { e.stopPropagation(); onTogglePin(session.id); }}
           className="text-muted-foreground hover:text-primary transition-colors"
-          title={session.pinned ? "إلغاء التثبيت" : "تثبيت"}
         >
           {session.pinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
         </button>
@@ -66,28 +71,38 @@ const ChatHistory: FC<ChatHistoryProps> = ({
     </div>
   );
 
+  const navItem = (icon: React.ReactNode, label: string, onClick: () => void) => (
+    <button
+      onClick={() => { onClose(); onClick(); }}
+      className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors font-normal"
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+
   return (
     <>
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-background/60 backdrop-blur-sm z-40"
-          onClick={onClose}
-        />
-      )}
-
-      <div
-        className={cn(
-          "fixed top-0 right-0 h-full w-72 bg-card border-l border-border z-50 transition-transform duration-300 ease-in-out flex flex-col",
-          isOpen ? "translate-x-0" : "translate-x-full"
-        )}
-      >
+      {isOpen && <div className="fixed inset-0 bg-background/60 backdrop-blur-sm z-40" onClick={onClose} />}
+      <div className={cn(
+        "fixed top-0 right-0 h-full w-72 bg-card border-l border-border z-50 transition-transform duration-300 ease-in-out flex flex-col",
+        isOpen ? "translate-x-0" : "translate-x-full"
+      )}>
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <h2 className="text-foreground font-bold text-sm">المحادثات السابقة</h2>
+          <h2 className="text-foreground font-bold text-sm">القائمة</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
+        {/* Quick nav sections */}
+        <div className="p-2 border-b border-border/50 space-y-0.5">
+          {navItem(<BookOpen className="w-4 h-4" />, "القرآن الكريم", () => navigate("/quran"))}
+          {navItem(<span className="text-sm">📿</span>, "الأذكار", () => navigate("/azkar"))}
+          {navItem(<span className="text-sm">🤲</span>, "الأدعية", () => navigate("/duas"))}
+        </div>
+
+        {/* Chat sessions */}
         <div className="flex-1 overflow-y-auto p-2">
           {sessions.length === 0 ? (
             <p className="text-muted-foreground text-sm text-center py-8">لا توجد محادثات سابقة</p>
@@ -103,9 +118,7 @@ const ChatHistory: FC<ChatHistoryProps> = ({
               )}
               {unpinnedSessions.length > 0 && (
                 <div>
-                  {pinnedSessions.length > 0 && (
-                    <p className="text-xs text-muted-foreground px-3 py-1 font-medium">أخرى</p>
-                  )}
+                  {pinnedSessions.length > 0 && <p className="text-xs text-muted-foreground px-3 py-1 font-medium">أخرى</p>}
                   {unpinnedSessions.map(renderSession)}
                 </div>
               )}
@@ -113,22 +126,15 @@ const ChatHistory: FC<ChatHistoryProps> = ({
           )}
         </div>
 
-        {/* سياسة الخصوصية والإعدادات */}
+        {/* Bottom actions */}
         <div className="border-t border-border p-3 space-y-1">
-          <button
-            onClick={onOpenPrivacy}
-            className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors font-normal"
-          >
-            <Shield className="w-4 h-4" />
-            <span>سياسة الخصوصية</span>
-          </button>
-          <button
-            onClick={onOpenSettings}
-            className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors font-normal"
-          >
-            <Settings className="w-4 h-4" />
-            <span>الإعدادات</span>
-          </button>
+          {navItem(<Shield className="w-4 h-4" />, "سياسة الخصوصية", () => onOpenPrivacy?.())}
+          {navItem(<Settings className="w-4 h-4" />, "الإعدادات", () => onOpenSettings?.())}
+          {isLoggedIn ? (
+            navItem(<LogOut className="w-4 h-4" />, "تسجيل الخروج", () => onSignOut?.())
+          ) : (
+            navItem(<LogIn className="w-4 h-4" />, "تسجيل الدخول", () => navigate("/auth"))
+          )}
         </div>
       </div>
     </>

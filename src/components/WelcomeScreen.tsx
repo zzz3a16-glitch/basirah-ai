@@ -1,19 +1,93 @@
 import { FC } from "react";
-import basirahLogo from "@/assets/basirah-logo.png";
+import { BookOpen, Heart, Sparkles } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
 interface WelcomeScreenProps {
   onExampleClick: (question: string) => void;
 }
-const WelcomeScreen: FC<WelcomeScreenProps> = ({
-  onExampleClick
-}) => {
-  return <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 animate-fade-in">
+
+const sections = [
+  {
+    icon: BookOpen,
+    emoji: "📖",
+    title: "القرآن الكريم",
+    description: "المصحف كاملاً مرتبًا بالسور",
+    path: "/quran",
+    color: "bg-primary/10 text-primary border-primary/20",
+  },
+  {
+    icon: Heart,
+    emoji: "📿",
+    title: "الأذكار",
+    description: "أذكار الصباح والمساء وأذكار متنوعة",
+    path: "/azkar",
+    color: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+  },
+  {
+    icon: Sparkles,
+    emoji: "🤲",
+    title: "الأدعية",
+    description: "أدعية قرآنية ونبوية مأثورة",
+    path: "/duas",
+    color: "bg-sky-500/10 text-sky-500 border-sky-500/20",
+  },
+];
+
+const exampleQuestions = [
+  "ما حكم صلاة الوتر؟",
+  "ما هي أركان الإسلام؟",
+  "ما حكم الزكاة على الذهب؟",
+  "كيف أصلي صلاة الاستخارة؟",
+];
+
+const WelcomeScreen: FC<WelcomeScreenProps> = ({ onExampleClick }) => {
+  const navigate = useNavigate();
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 animate-fade-in">
       {/* Logo */}
       <div className="text-center mb-8">
-        <img alt="بصيرة" className="h-16 md:h-20 mx-auto mb-6 opacity-90" src="/lovable-uploads/b463f692-fc0f-4421-96a6-24a33011c117.png" />
-        <p className="text-muted-foreground text-base md:text-lg max-w-md mx-auto leading-relaxed">
+        <img
+          alt="بصيرة"
+          className="h-16 md:h-20 mx-auto mb-4 opacity-90"
+          src="/lovable-uploads/b463f692-fc0f-4421-96a6-24a33011c117.png"
+        />
+        <p className="text-muted-foreground text-sm md:text-base max-w-md mx-auto leading-relaxed">
           ذكاء اصطناعي إسلامي موثوق يلتزم بمنهج أهل السنة والجماعة
         </p>
       </div>
-    </div>;
+
+      {/* Sections */}
+      <div className="grid grid-cols-3 gap-3 w-full max-w-lg mb-8">
+        {sections.map((section) => (
+          <button
+            key={section.path}
+            onClick={() => navigate(section.path)}
+            className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all hover:scale-[1.02] active:scale-[0.98] ${section.color}`}
+          >
+            <span className="text-2xl">{section.emoji}</span>
+            <span className="text-xs font-bold">{section.title}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Example questions */}
+      <div className="w-full max-w-lg">
+        <p className="text-muted-foreground text-xs mb-3 text-center">أو اسأل سؤالاً شرعيًا:</p>
+        <div className="grid grid-cols-2 gap-2">
+          {exampleQuestions.map((q) => (
+            <button
+              key={q}
+              onClick={() => onExampleClick(q)}
+              className="text-right text-sm px-3 py-2.5 rounded-xl bg-card border border-border/50 text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 };
+
 export default WelcomeScreen;

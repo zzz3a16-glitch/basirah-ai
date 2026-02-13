@@ -21,15 +21,23 @@ interface ChatMessageProps {
   userName?: string;
 }
 
-// Highlight Quranic verses ﴿ ﴾ in green
+// Highlight Quranic verses ﴿ ﴾ in green AND Hadiths « » in light green
 const formatAnswer = (text: string): ReactNode[] => {
   const cleaned = text.replace(/\*/g, "");
-  const parts = cleaned.split(/(﴿[^﴾]+﴾)/g);
+  // Split by both ﴿...﴾ and «...»
+  const parts = cleaned.split(/(﴿[^﴾]+﴾|«[^»]+»)/g);
 
   return parts.map((part, i) => {
     if (part.startsWith("﴿") && part.endsWith("﴾")) {
       return (
         <span key={i} className="text-primary font-semibold">
+          {part}
+        </span>
+      );
+    }
+    if (part.startsWith("«") && part.endsWith("»")) {
+      return (
+        <span key={i} className="font-medium" style={{ color: "hsl(163 50% 55%)" }}>
           {part}
         </span>
       );
@@ -53,14 +61,12 @@ const ChatMessage: FC<ChatMessageProps> = ({
     return (
       <div className="flex justify-start mb-6 animate-slide-up">
         <div className="max-w-[85%] md:max-w-[75%]">
-          {/* اسم المستخدم */}
           <div className="flex items-center gap-1.5 mb-1.5 px-1">
             <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
               <User className="w-3 h-3 text-primary" />
             </div>
             <span className="text-xs font-medium text-primary">{userName}</span>
           </div>
-          {/* بوكس الرسالة الأخضر */}
           <div className="bg-primary/15 border border-primary/25 rounded-2xl rounded-tr-sm px-5 py-3">
             <p className="text-foreground leading-relaxed font-normal">{content as string}</p>
           </div>
@@ -101,12 +107,10 @@ const ChatMessage: FC<ChatMessageProps> = ({
   return (
     <div className="flex justify-end mb-8 animate-slide-up">
       <div className="max-w-[90%] md:max-w-[80%] w-full">
-        {/* اسم بصيرة */}
         <div className="flex items-center gap-1.5 mb-2 px-1">
           <span className="text-xs font-bold text-primary tracking-wide">بصيرة</span>
         </div>
 
-        {/* Main Answer - وزن خط عادي للإجابة */}
         <div className="text-foreground leading-loose text-base md:text-lg whitespace-pre-wrap font-light">
           {animate && !animationComplete ? (
             <TypewriterText
@@ -120,7 +124,6 @@ const ChatMessage: FC<ChatMessageProps> = ({
           )}
         </div>
 
-        {/* Fiqh disagreement notice - وزن خط متوسط */}
         {hasDisagreement && animationComplete && (
           <div className="mt-4 p-3 bg-amber-500/10 border-r-2 border-amber-500 rounded-sm animate-fade-in">
             <div className="flex items-start gap-2">
@@ -132,7 +135,6 @@ const ChatMessage: FC<ChatMessageProps> = ({
           </div>
         )}
 
-        {/* Note - وزن خط متوسط */}
         {messageContent.note && animationComplete && (
           <div className="mt-4 p-3 bg-primary/5 border-r-2 border-primary rounded-sm animate-fade-in">
             <div className="flex items-start gap-2">
@@ -144,7 +146,6 @@ const ChatMessage: FC<ChatMessageProps> = ({
           </div>
         )}
 
-        {/* Suggested Question */}
         {messageContent.suggestedQuestion && animationComplete && (
           <div className="mt-4 animate-fade-in">
             <button
@@ -156,7 +157,6 @@ const ChatMessage: FC<ChatMessageProps> = ({
           </div>
         )}
 
-        {/* Expandable Sources - وزن خفيف */}
         {hasSources && animationComplete && (
           <div className="mt-6 animate-fade-in">
             <button
@@ -168,19 +168,12 @@ const ChatMessage: FC<ChatMessageProps> = ({
             >
               <BookOpen className="w-4 h-4" />
               <span>المصادر ({allSources.length})</span>
-              {isExpanded ? (
-                <ChevronUp className="w-4 h-4 mr-auto" />
-              ) : (
-                <ChevronDown className="w-4 h-4 mr-auto" />
-              )}
+              {isExpanded ? <ChevronUp className="w-4 h-4 mr-auto" /> : <ChevronDown className="w-4 h-4 mr-auto" />}
             </button>
-
-            <div
-              className={cn(
-                "overflow-hidden transition-all duration-300 ease-in-out",
-                isExpanded ? "max-h-96 opacity-100 mt-3" : "max-h-0 opacity-0"
-              )}
-            >
+            <div className={cn(
+              "overflow-hidden transition-all duration-300 ease-in-out",
+              isExpanded ? "max-h-96 opacity-100 mt-3" : "max-h-0 opacity-0"
+            )}>
               <div className="space-y-2 pr-2">
                 {allSources.map((src, idx) => (
                   <div key={idx} className="flex items-start gap-2 text-sm text-muted-foreground font-light">
