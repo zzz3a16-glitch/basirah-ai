@@ -63,6 +63,7 @@ const QuranPage: FC = () => {
             <div
               key={surah.id}
               className="bg-card border border-border/40 rounded-2xl p-3.5 hover:border-primary/30 hover:shadow-sm transition-all duration-200 cursor-pointer group"
+              onClick={() => navigate(`/quran/${surah.id}`)}
             >
               <div className="flex items-start gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">

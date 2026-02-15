@@ -2,3 +2,6 @@ project_id = "croyojiihkuasdxbysdc"
 
 [functions.islamic-search]
 verify_jwt = false
+
+[functions.quran-api]
+verify_jwt = false
