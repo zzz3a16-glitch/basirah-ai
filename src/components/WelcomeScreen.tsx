@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { BookOpen, Heart, Sparkles } from "lucide-react";
+import { BookOpen, Heart, Sparkles, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface WelcomeScreenProps {
@@ -28,6 +28,13 @@ const sections = [
     description: "أدعية قرآنية ونبوية",
     path: "/duas",
   },
+  {
+    icon: Clock,
+    emoji: "🕌",
+    title: "أوقات الصلاة",
+    description: "المواقيت والتاريخ الهجري",
+    path: "/prayer-times",
+  },
 ];
 
 const exampleQuestions = [
@@ -52,7 +59,7 @@ const WelcomeScreen: FC<WelcomeScreenProps> = ({ onExampleClick }) => {
       </div>
 
       {/* Sections */}
-      <div className="grid grid-cols-3 gap-3 w-full max-w-md mb-10">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full max-w-lg mb-10">
         {sections.map((section) => (
           <button
             key={section.path}
