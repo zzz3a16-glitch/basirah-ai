@@ -10,6 +10,7 @@ import QuranPage from "./pages/QuranPage";
 import SurahViewPage from "./pages/SurahViewPage";
 import AzkarPage from "./pages/AzkarPage";
 import DuasPage from "./pages/DuasPage";
+import PrayerTimesPage from "./pages/PrayerTimesPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/quran/:surahId" element={<SurahViewPage />} />
             <Route path="/azkar" element={<AzkarPage />} />
             <Route path="/duas" element={<DuasPage />} />
+            <Route path="/prayer-times" element={<PrayerTimesPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
